@@ -1,0 +1,139 @@
+# ─── Python ────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ─── Virtual environments ──────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.python-version
+.conda/
+
+# ─── Package managers ──────────────────────────────────────────────────────
+pip-log.txt
+pip-delete-this-directory.txt
+uv.lock
+poetry.lock
+
+# ─── Jupyter / IPython ─────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# ─── Testing / linting / type checking ─────────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+
+# ─── IDE / editor ──────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ─── ML: experiment tracking & logs ────────────────────────────────────────
+wandb/
+mlruns/
+runs/
+lightning_logs/
+tb_logs/
+tensorboard/
+outputs/
+logs/
+*.log
+
+# ─── ML: model artifacts & checkpoints ─────────────────────────────────────
+# Large binary files — keep code, not weights.
+checkpoints/
+ckpts/
+saved_models/
+artifacts/
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.h5
+*.tflite
+*.pb
+*.msgpack
+
+# ─── ML: datasets & caches ─────────────────────────────────────────────────
+data/
+datasets/
+.cache/
+.huggingface/
+~/.cache/huggingface/
+hf_cache/
+*.arrow
+*.parquet
+*.feather
+*.tsv.gz
+*.csv.gz
+
+# Allow small sample/test fixtures if explicitly committed under data/samples/
+# (uncomment when needed)
+# !data/samples/
+
+# ─── ML: tokenizer/vocab side files (regenerable) ──────────────────────────
+*.vocab
+spiece.model
+# Note: keep README.md or config-like text artifacts.
+
+# ─── Project: run outputs (per design doc §6) ──────────────────────────────
+results/
+run_metadata.json
+run_metadata/
+attention_heatmaps/
+predictions/
+metrics/
+confusion_matrices/
+
+# ─── Secrets / env ─────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# ─── Serena (local project memory; per-user, not for repo) ─────────────────
+.serena/
+
+# ─── Misc OS / tooling ─────────────────────────────────────────────────────
+.direnv/
+.envrc
+node_modules/
+.npm/
