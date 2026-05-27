@@ -1,5 +1,3 @@
-"""Internal utilities — not part of the public API."""
-
 import random
 
 import numpy as np
@@ -7,7 +5,6 @@ import torch
 
 
 def set_seed(seed: int) -> None:
-    """Set Python, NumPy, and torch (CPU + CUDA) RNG seeds."""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -15,10 +12,8 @@ def set_seed(seed: int) -> None:
 
 
 def get_device() -> str:
-    """Return 'cuda' if a CUDA GPU is available, else 'cpu'."""
     return "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def count_params(model: torch.nn.Module) -> int:
-    """Return total number of parameters in model."""
     return sum(p.numel() for p in model.parameters())

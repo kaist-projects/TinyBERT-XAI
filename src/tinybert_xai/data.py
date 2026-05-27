@@ -1,41 +1,34 @@
-"""Internal dataset loading — not part of the public API.
-
-KDPair (kdpair.py) is the user-facing entry point.
-The full 9-dataset adapter contract (docs/notes/02-project-synthesis.md §4) lands in iter 7.
-"""
-
 import torch
 from datasets import Dataset, load_dataset
 from transformers import BatchEncoding, PreTrainedTokenizerBase
 
+from tinybert_xai.datasets import DatasetSpec
 
-def _load_batch(
-    hf_path: str,
-    hf_config: str | None,
-    text_column: str,
-    label_column: str,
+
+def load_batch(
+    spec: DatasetSpec,
     tokenizer: PreTrainedTokenizerBase,
+    *,
     batch_size: int,
     max_length: int,
-    split: str,
+    split: str | None = None,
+    device: str | None = None,
 ) -> BatchEncoding:
-    """Load `batch_size` examples from a HuggingFace dataset as a BatchEncoding.
-
-    Returns a BatchEncoding with keys {input_ids, attention_mask, token_type_ids, labels}.
-    Shapes: first three are [batch_size, max_length]; labels is [batch_size].
-    Call .to(device) on the result to move to GPU.
-    """
-    ds = load_dataset(hf_path, hf_config, split=split)
+    chosen_split = split or spec.default_split
+    ds = load_dataset(spec.hf_path, spec.hf_config, split=chosen_split)
     if not isinstance(ds, Dataset):
-        raise TypeError(f"Expected a Dataset for split={split!r}, got {type(ds).__name__}")
+        raise TypeError(f"Expected Dataset for split={chosen_split!r}, got {type(ds).__name__}")
 
     examples = ds.select(range(batch_size))
     encoding = tokenizer(
-        examples[text_column],
+        examples[spec.text_column],
         padding="max_length",
         truncation=True,
         max_length=max_length,
         return_tensors="pt",
     )
-    encoding["labels"] = torch.tensor(examples[label_column], dtype=torch.long)
+    encoding["labels"] = torch.tensor(examples[spec.label_column], dtype=torch.long)
+
+    if device is not None:
+        encoding = encoding.to(device)
     return encoding
