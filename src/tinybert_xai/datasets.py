@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from enum import IntEnum
 from typing import Any, ClassVar
 
+from datasets import Dataset, DatasetDict, load_dataset
+
 
 @dataclass(frozen=True)
 class DatasetSpec:
@@ -40,3 +42,17 @@ DATASET_TWEETEVAL_SENTIMENT = DatasetSpec(
     hf_config="sentiment",
     data_cls=TweetEvalSentimentData,
 )
+
+
+class DatasetLoader:
+    def __init__(self, spec: DatasetSpec) -> None:
+        self.spec = spec
+        self.splits = load_dataset(spec.hf_path, spec.hf_config)
+        if not isinstance(self.splits, DatasetDict):
+            raise TypeError(f"Expected DatasetDict, got {type(self.splits).__name__}")
+
+    def get(self, split: str) -> Dataset:
+        ds = self.splits[split]
+        if not isinstance(ds, Dataset):
+            raise TypeError(f"Expected Dataset for split={split!r}, got {type(ds).__name__}")
+        return ds

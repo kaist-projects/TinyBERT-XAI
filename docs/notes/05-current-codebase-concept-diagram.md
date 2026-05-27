@@ -24,11 +24,11 @@ flowchart TD
 
     Config["config.py<br/>Config dataclass<br/>seed, checkpoints, max sequence length"]
     Utils["utils.py<br/>set_seed, get_device, count_params"]
-    Datasets["datasets.py<br/>DatasetSpec<br/>DATASET_TWEETEVAL_SENTIMENT"]
+    Datasets["datasets.py<br/>DatasetSpec<br/>DATASET_TWEETEVAL_SENTIMENT<br/>DatasetLoader"]
     RowType["TweetEvalSentimentData<br/>text: str<br/>label: SentimentLabel<br/>from_row"]
     Models["models.py<br/>load_tokenizer<br/>load_classifier"]
-    Loader["data.py<br/>DatasetLoader<br/>loads DatasetDict"]
-    Encoder["data.py<br/>BatchEncoder<br/>raw rows -> BatchEncoding"]
+    Loader["datasets.py<br/>DatasetLoader<br/>loads DatasetDict"]
+    Encoder["batch.py<br/>TweetEvalSentimentBatchEncoder<br/>raw rows -> BatchEncoding"]
     KDPair["kdpair.py<br/>KDPair.forward"]
     KDOutputs["kdpair.py<br/>KDOutputs<br/>shape checks + summary"]
 
@@ -83,8 +83,8 @@ That means:
 
 - `scripts/00_smoke_test.py` is responsible for wiring the pieces together.
 - `models.py` loads models and tokenizers, but does not know about datasets.
-- `data.py` loads and tokenizes batches, but does not know about teacher or student models.
-- `datasets.py` stores dataset metadata, but does not load models or run training.
+- `datasets.py` stores dataset metadata and loads HuggingFace splits, but does not load models or run training.
+- `batch.py` encodes batches, but does not know about teacher or student models.
 - `KDPair` receives already-created teacher, student, and tokenizer objects.
 - `KDPair.forward(...)` only runs both models on the same batch.
 
@@ -101,7 +101,7 @@ sequenceDiagram
     participant Registry as datasets.py
     participant Models as models.py
     participant Loader as DatasetLoader
-    participant Encoder as BatchEncoder
+    participant Encoder as TweetEvalSentimentBatchEncoder
     participant Pair as KDPair
     participant Outputs as KDOutputs
 
@@ -112,10 +112,10 @@ sequenceDiagram
     Script->>Models: load_tokenizer(cfg.tokenizer_checkpoint)
     Script->>Models: load_classifier(cfg.teacher_checkpoint, num_labels, device)
     Script->>Models: load_classifier(cfg.student_checkpoint, num_labels, device)
-    Script->>Pair: KDPair(teacher, student, tokenizer)
+    Script->>Pair: KDPair(teacher, student)
     Script->>Loader: DatasetLoader(spec)
-    Script->>Encoder: BatchEncoder(spec, tokenizer, max_length=128)
-    Script->>Loader: get_split("train")
+    Script->>Encoder: TweetEvalSentimentBatchEncoder(tokenizer, max_length=128)
+    Script->>Loader: get("train")
     Loader-->>Script: HuggingFace Dataset
     Script->>Encoder: encode(train_ds, batch_size=4)
     Encoder-->>Script: BatchEncoding
@@ -131,9 +131,9 @@ sequenceDiagram
 | File | Responsibility | What It Does Not Do |
 |---|---|---|
 | `src/tinybert_xai/config.py` | Holds basic project settings in `Config`. | Does not load files, models, or datasets. |
-| `src/tinybert_xai/datasets.py` | Defines `DatasetSpec`, `SentimentLabel`, `TweetEvalSentimentData`, and `DATASET_TWEETEVAL_SENTIMENT`. | Does not call HuggingFace loading directly. |
+| `src/tinybert_xai/datasets.py` | Defines `DatasetSpec`, `SentimentLabel`, `TweetEvalSentimentData`, `DATASET_TWEETEVAL_SENTIMENT`, and `DatasetLoader`. | Does not train, tokenize, or evaluate. |
 | `src/tinybert_xai/models.py` | Loads tokenizer and sequence-classification models. | Does not decide which dataset to use. |
-| `src/tinybert_xai/data.py` | `DatasetLoader` loads all HuggingFace splits into a `DatasetDict`; `BatchEncoder` parses rows through `spec.data_cls.from_row`, tokenizes text, adds labels, and returns `BatchEncoding`. | Does not train or evaluate. |
+| `src/tinybert_xai/batch.py` | `TweetEvalSentimentBatchEncoder` receives a HuggingFace `Dataset`, parses rows through `TweetEvalSentimentData.from_row`, tokenizes text, adds labels, and returns `BatchEncoding`. | Does not choose splits, load model checkpoints, train, or evaluate. |
 | `src/tinybert_xai/kdpair.py` | Runs teacher and student forward passes on the same batch. | Does not construct models or compute losses. |
 | `src/tinybert_xai/utils.py` | Provides generic helpers for seed, device, and parameter counts. | Does not contain project-specific training logic. |
 | `scripts/00_smoke_test.py` | Wires all pieces together and checks output shapes. | Does not perform optimization or save checkpoints. |

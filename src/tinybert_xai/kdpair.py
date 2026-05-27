@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import torch
-from transformers import BatchEncoding, PreTrainedModel, PreTrainedTokenizerBase
+from transformers import BatchEncoding, PreTrainedModel
 
 
 @dataclass
@@ -55,7 +55,6 @@ class KDOutputs:
 class KDPair:
     teacher: PreTrainedModel
     student: PreTrainedModel
-    tokenizer: PreTrainedTokenizerBase
 
     def forward(self, batch: BatchEncoding, *, train_mode: bool = False) -> KDOutputs:
         inputs = {k: v for k, v in batch.items() if k != "labels"}

@@ -2,11 +2,11 @@
 import torch
 
 from tinybert_xai import (
-    BatchEncoder,
     Config,
     DATASET_TWEETEVAL_SENTIMENT,
     DatasetLoader,
     KDPair,
+    TweetEvalSentimentBatchEncoder,
     count_params,
     get_device,
     load_classifier,
@@ -24,11 +24,15 @@ def main() -> None:
     tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)
     teacher = load_classifier(cfg.teacher_checkpoint, spec.num_labels, device)
     student = load_classifier(cfg.student_checkpoint, spec.num_labels, device)
-    pair = KDPair(teacher, student, tokenizer)
+    pair = KDPair(teacher, student)
     dataset_loader = DatasetLoader(spec)
-    batch_encoder = BatchEncoder(spec, tokenizer, max_length=cfg.max_seq_length, device=device)
+    batch_encoder = TweetEvalSentimentBatchEncoder(
+        tokenizer,
+        max_length=cfg.max_seq_length,
+        device=device,
+    )
 
-    train_ds = dataset_loader.get_split("train")
+    train_ds = dataset_loader.get("train")
     batch = batch_encoder.encode(train_ds, batch_size=4)
 
     out = pair.forward(batch)
