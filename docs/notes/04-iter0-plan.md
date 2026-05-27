@@ -21,7 +21,7 @@ Confirmed decisions (from clarifying questions):
 | **Single Responsibility** | Each module owns one concern: config = settings, datasets = registry, models = checkpoint loading, data = tokenized batches, utils = generic helpers, kdpair = paired forward. No module knows two things. |
 | **Dependency Injection** | All loaders take their dependencies as explicit args (`checkpoint`, `num_labels`, `device`, `tokenizer`, `spec`). No factory hides construction. No module reaches into a registry or global config implicitly. The smoke test (and later, the trainer) is responsible for wiring. |
 | **Pure data vs. behavior** | `Config`, `DatasetSpec`, `KDOutputs` are frozen dataclasses. `KDPair` carries three references and one verb. Registries are plain dicts. |
-| **Public API at the boundary** | `__init__.py` re-exports the wiring blocks users need: `Config`, `KDPair`, `KDOutputs`, `load_classifier`, `load_tokenizer`, `load_batch`, `get_dataset_spec`, plus the seed/device helpers. Nothing is name-mangled with `_` — DI requires composable, importable building blocks. |
+| **Public API at the boundary** | `__init__.py` re-exports the wiring blocks users need: `Config`, `DATASET_TWEETEVAL_SENTIMENT`, `DatasetLoader`, `KDPair`, `KDOutputs`, `load_classifier`, `load_tokenizer`, plus the seed/device helpers. Nothing is name-mangled with `_` — DI requires composable, importable building blocks. |
 
 ## Module layout
 
@@ -32,9 +32,9 @@ TinyBERT-XAI/
 ├── src/tinybert_xai/
 │   ├── __init__.py                  # public re-exports
 │   ├── config.py                    # Config dataclass (project-wide settings)
-│   ├── datasets.py                  # DatasetSpec + DATASET_REGISTRY + get_dataset_spec
+│   ├── datasets.py                  # DatasetSpec + DATASET_TWEETEVAL_SENTIMENT
 │   ├── models.py                    # load_tokenizer, load_classifier
-│   ├── data.py                      # load_batch
+│   ├── data.py                      # DatasetLoader + batch_from_dataset
 │   ├── utils.py                     # set_seed, get_device, count_params
 │   └── kdpair.py                    # KDPair + KDOutputs
 ├── scripts/
@@ -64,27 +64,38 @@ Pure data. No methods. Iter-2's per-condition config and iter-7's per-dataset co
 class DatasetSpec:
     hf_path: str
     hf_config: str | None
-    label_names: tuple[str, ...]
-    text_column: str = "text"
-    label_column: str = "label"
-    default_split: str = "train"
+    data_cls: type
 
     @property
     def num_labels(self) -> int:
-        return len(self.label_names)
+        return len(self.data_cls.Label)
 
-DATASET_REGISTRY: dict[str, DatasetSpec] = {
-    "tweet_eval/sentiment": DatasetSpec(
-        hf_path="cardiffnlp/tweet_eval",
-        hf_config="sentiment",
-        label_names=("negative", "neutral", "positive"),
-    ),
-}
+class SentimentLabel(IntEnum):
+    NEGATIVE = 0
+    NEUTRAL = 1
+    POSITIVE = 2
 
-def get_dataset_spec(key: str) -> DatasetSpec:
-    """Lookup with helpful error listing available keys."""
+@dataclass(frozen=True)
+class TweetEvalSentimentData:
+    Label = SentimentLabel
+
+    text: str
+    label: SentimentLabel
+
+    @classmethod
+    def from_row(cls, row: dict[str, Any]) -> "TweetEvalSentimentData":
+        return cls(
+            text=row["text"],
+            label=SentimentLabel(row["label"]),
+        )
+
+DATASET_TWEETEVAL_SENTIMENT = DatasetSpec(
+    hf_path="cardiffnlp/tweet_eval",
+    hf_config="sentiment",
+    data_cls=TweetEvalSentimentData,
+)
 ```
-SRP win: registry doesn't know about models, models don't know about registry. Iter-7 grows this file to 9 entries without touching anything else.
+SRP win: dataset source metadata lives in `DatasetSpec`; row shape and parsing live in `TweetEvalSentimentData`. Models still do not know about either.
 
 ### `src/tinybert_xai/models.py`
 Two free functions; no class. Both pure: same inputs → same model.
@@ -102,21 +113,38 @@ def load_classifier(
 DI win: callers pass `num_labels` and `device` explicitly. No reaching into config or registry. Testable with any HuggingFace checkpoint and any device string.
 
 ### `src/tinybert_xai/data.py`
-One free function:
+One loader class plus one batch helper:
 ```python
-def load_batch(
+class DatasetLoader:
+    def __init__(self, spec: DatasetSpec) -> None:
+        self.spec = spec
+        self.splits = load_dataset(spec.hf_path, spec.hf_config)
+
+    def get_split(self, split: str) -> Dataset: ...
+
+    def load_batch(
+        self,
+        tokenizer: PreTrainedTokenizerBase,
+        *,
+        batch_size: int,
+        max_length: int,
+        split: str,
+        device: str | None = None,
+    ) -> BatchEncoding: ...
+
+def batch_from_dataset(
     spec: DatasetSpec,
+    ds: Dataset,
     tokenizer: PreTrainedTokenizerBase,
     *,
     batch_size: int,
     max_length: int,
-    split: str | None = None,
     device: str | None = None,
 ) -> BatchEncoding:
     """Return {input_ids, attention_mask, token_type_ids, labels}, padded to max_length,
-    optionally moved to device. Uses spec.text_column / label_column / default_split."""
+    optionally moved to device. Parses raw rows through spec.data_cls.from_row."""
 ```
-DI win: takes spec + tokenizer as args, doesn't construct them. Sentence-pair handling (iter-7) extends this signature with an optional `text_b_column`-aware path — non-breaking.
+DI win: the loader owns the HuggingFace `DatasetDict`, while batching still receives tokenizer and shape choices explicitly. Sentence-pair handling belongs in later dataset adapters that normalize examples into the training format.
 
 ### `src/tinybert_xai/utils.py`
 ```python
@@ -154,7 +182,7 @@ class KDOutputs:
 
 What KDPair **does not** do (compared to HEAD):
 - No `for_dataset` factory. The smoke test wires components explicitly.
-- No `sample_batch`. Call `load_batch(...)` directly.
+- No `sample_batch`. Dataset batching lives in `DatasetLoader`.
 - No knowledge of the dataset registry, the device, or `max_seq_length`.
 - No knowledge of param counts — `count_params` is in `utils.py`; smoke test computes them when summarizing.
 
@@ -163,16 +191,22 @@ DI win: `KDPair(fake_teacher, fake_student, fake_tokenizer)` is one line in a te
 ### `src/tinybert_xai/__init__.py`
 ```python
 from tinybert_xai.config import Config
-from tinybert_xai.datasets import DatasetSpec, DATASET_REGISTRY, get_dataset_spec
+from tinybert_xai.datasets import (
+    DatasetSpec,
+    DATASET_TWEETEVAL_SENTIMENT,
+    SentimentLabel,
+    TweetEvalSentimentData,
+)
 from tinybert_xai.kdpair import KDPair, KDOutputs
 from tinybert_xai.models import load_tokenizer, load_classifier
-from tinybert_xai.data import load_batch
+from tinybert_xai.data import DatasetLoader, batch_from_dataset
 from tinybert_xai.utils import set_seed, get_device, count_params
 
 __all__ = [
-    "Config", "DatasetSpec", "DATASET_REGISTRY", "get_dataset_spec",
+    "Config", "DatasetSpec", "DATASET_TWEETEVAL_SENTIMENT",
+    "SentimentLabel", "TweetEvalSentimentData",
     "KDPair", "KDOutputs",
-    "load_tokenizer", "load_classifier", "load_batch",
+    "load_tokenizer", "load_classifier", "DatasetLoader", "batch_from_dataset",
     "set_seed", "get_device", "count_params",
 ]
 ```
@@ -185,8 +219,8 @@ Public surface = every building block. DI requires composability; nothing is hid
 """Iteration 0 smoke test — explicit wiring proves DI/SRP layout works on GPU."""
 import torch
 from tinybert_xai import (
-    Config, get_dataset_spec, set_seed, get_device, count_params,
-    load_tokenizer, load_classifier, load_batch, KDPair,
+    Config, DATASET_TWEETEVAL_SENTIMENT, set_seed, get_device, count_params,
+    load_tokenizer, load_classifier, DatasetLoader, KDPair,
 )
 
 def main() -> None:
@@ -194,16 +228,17 @@ def main() -> None:
     set_seed(cfg.seed)
     device = cfg.device or get_device()
 
-    spec = get_dataset_spec("tweet_eval/sentiment")
+    spec = DATASET_TWEETEVAL_SENTIMENT
     tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)
     teacher   = load_classifier(cfg.teacher_checkpoint, spec.num_labels, device)
     student   = load_classifier(cfg.student_checkpoint, spec.num_labels, device)
     pair      = KDPair(teacher, student, tokenizer)
+    loader    = DatasetLoader(spec)
 
-    batch = load_batch(
-        spec, tokenizer,
+    batch = loader.load_batch(
+        tokenizer,
         batch_size=4, max_length=cfg.max_seq_length,
-        split=spec.default_split, device=device,
+        split="train", device=device,
     )
 
     out = pair.forward(batch)

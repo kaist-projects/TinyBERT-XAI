@@ -3,11 +3,11 @@ import torch
 
 from tinybert_xai import (
     Config,
+    DATASET_TWEETEVAL_SENTIMENT,
+    DatasetLoader,
     KDPair,
     count_params,
-    get_dataset_spec,
     get_device,
-    load_batch,
     load_classifier,
     load_tokenizer,
     set_seed,
@@ -19,18 +19,18 @@ def main() -> None:
     set_seed(cfg.seed)
     device = cfg.device or get_device()
 
-    spec = get_dataset_spec("tweet_eval/sentiment")
+    spec = DATASET_TWEETEVAL_SENTIMENT
     tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)
     teacher = load_classifier(cfg.teacher_checkpoint, spec.num_labels, device)
     student = load_classifier(cfg.student_checkpoint, spec.num_labels, device)
     pair = KDPair(teacher, student, tokenizer)
+    dataset_loader = DatasetLoader(spec)
 
-    batch = load_batch(
-        spec,
+    batch = dataset_loader.load_batch(
         tokenizer,
         batch_size=4,
         max_length=cfg.max_seq_length,
-        split=spec.default_split,
+        split="train",
         device=device,
     )
 

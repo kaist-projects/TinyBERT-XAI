@@ -1,31 +1,42 @@
 from dataclasses import dataclass
+from enum import IntEnum
+from typing import Any
 
 
 @dataclass(frozen=True)
 class DatasetSpec:
     hf_path: str
     hf_config: str | None
-    label_names: tuple[str, ...]
-    text_column: str = "text"
-    label_column: str = "label"
-    default_split: str = "train"
+    data_cls: type
 
     @property
     def num_labels(self) -> int:
-        return len(self.label_names)
+        return len(self.data_cls.Label)
 
 
-DATASET_REGISTRY: dict[str, DatasetSpec] = {
-    "tweet_eval/sentiment": DatasetSpec(
-        hf_path="cardiffnlp/tweet_eval",
-        hf_config="sentiment",
-        label_names=("negative", "neutral", "positive"),
-    ),
-}
+class SentimentLabel(IntEnum):
+    NEGATIVE = 0
+    NEUTRAL = 1
+    POSITIVE = 2
 
 
-def get_dataset_spec(key: str) -> DatasetSpec:
-    if key not in DATASET_REGISTRY:
-        available = ", ".join(sorted(DATASET_REGISTRY))
-        raise KeyError(f"Unknown dataset {key!r}. Available: {available}")
-    return DATASET_REGISTRY[key]
+@dataclass(frozen=True)
+class TweetEvalSentimentData:
+    Label = SentimentLabel
+
+    text: str
+    label: SentimentLabel
+
+    @classmethod
+    def from_row(cls, row: dict[str, Any]) -> "TweetEvalSentimentData":
+        return cls(
+            text=row["text"],
+            label=SentimentLabel(row["label"]),
+        )
+
+
+DATASET_TWEETEVAL_SENTIMENT = DatasetSpec(
+    hf_path="cardiffnlp/tweet_eval",
+    hf_config="sentiment",
+    data_cls=TweetEvalSentimentData,
+)
