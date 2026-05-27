@@ -117,6 +117,8 @@ class KDPair:
         spec: _DatasetSpec,
         device: str,
         max_seq_length: int,
+        teacher_checkpoint: str = "",
+        student_checkpoint: str = "",
     ) -> None:
         self._teacher = teacher
         self._student = student
@@ -124,6 +126,8 @@ class KDPair:
         self._spec = spec
         self._device = device
         self._max_seq_length = max_seq_length
+        self._teacher_checkpoint = teacher_checkpoint
+        self._student_checkpoint = student_checkpoint
 
     # ------------------------------------------------------------------
     # Public constructor
@@ -161,7 +165,11 @@ class KDPair:
         teacher = _load_classifier(teacher_checkpoint, spec.num_labels, resolved_device)
         student = _load_classifier(student_checkpoint, spec.num_labels, resolved_device)
 
-        return cls(teacher, student, tokenizer, spec, resolved_device, max_seq_length)
+        return cls(
+            teacher, student, tokenizer, spec, resolved_device, max_seq_length,
+            teacher_checkpoint=teacher_checkpoint,
+            student_checkpoint=student_checkpoint,
+        )
 
     # ------------------------------------------------------------------
     # Data
@@ -241,3 +249,19 @@ class KDPair:
     @property
     def device(self) -> str:
         return self._device
+
+    @property
+    def max_seq_length(self) -> int:
+        return self._max_seq_length
+
+    @property
+    def spec(self) -> _DatasetSpec:
+        return self._spec
+
+    @property
+    def teacher_checkpoint(self) -> str:
+        return self._teacher_checkpoint
+
+    @property
+    def student_checkpoint(self) -> str:
+        return self._student_checkpoint
