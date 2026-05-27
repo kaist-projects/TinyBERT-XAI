@@ -8,6 +8,7 @@ from transformers import BatchEncoding, PreTrainedTokenizerBase
 
 @dataclass(frozen=True)
 class DatasetSpec:
+    name: str
     hf_path: str
     hf_config: str | None
     num_labels: int
@@ -20,6 +21,7 @@ class SentimentLabel(IntEnum):
 
 
 DATASET_TWEETEVAL_SENTIMENT = DatasetSpec(
+    name="tweet_eval-sentiment",
     hf_path="cardiffnlp/tweet_eval",
     hf_config="sentiment",
     num_labels=len(SentimentLabel),

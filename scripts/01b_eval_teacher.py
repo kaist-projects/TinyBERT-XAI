@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
-from pathlib import Path
 
 import torch
 
@@ -32,8 +31,11 @@ from tinybert_xai import (
     get_device,
     load_classifier,
     load_split,
+    load_state_dict,
     load_tokenizer,
+    results_dir,
     set_seed,
+    teacher_dir,
 )
 
 # ── determinism ──────────────────────────────────────────────────────────────
@@ -43,7 +45,6 @@ torch.use_deterministic_algorithms(True, warn_only=True)
 def main() -> None:
     cfg = Config()
     spec = DATASET_TWEETEVAL_SENTIMENT
-    spec_name = "tweet_eval-sentiment"
 
     set_seed(cfg.seed)
 
@@ -51,8 +52,8 @@ def main() -> None:
     print(f"Device: {device}")
 
     # ── locate artefacts from training run ───────────────────────────────────
-    ckpt_path = Path("checkpoints") / "teachers" / spec_name / "best.pt"
-    metadata_path = Path("results") / "teachers" / spec_name / "run_metadata.json"
+    ckpt_path = teacher_dir(spec.name) / "best.pt"
+    metadata_path = results_dir("teacher", spec.name) / "run_metadata.json"
 
     if not ckpt_path.exists():
         raise FileNotFoundError(
@@ -69,8 +70,7 @@ def main() -> None:
     print(f"Loading checkpoint: {ckpt_path}")
     tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)
     model = load_classifier(cfg.teacher_checkpoint, spec.num_labels, device)
-    state_dict = torch.load(ckpt_path, map_location=device, weights_only=True)
-    model.load_state_dict(state_dict)
+    load_state_dict(model, ckpt_path, device)
     print("Checkpoint loaded successfully.")
 
     # ── load dev + test splits ───────────────────────────────────────────────
