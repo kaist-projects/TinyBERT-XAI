@@ -21,7 +21,7 @@ Confirmed decisions (from clarifying questions):
 | **Single Responsibility** | Each module owns one concern: config = settings, datasets = registry, models = checkpoint loading, data = tokenized batches, utils = generic helpers, kdpair = paired forward. No module knows two things. |
 | **Dependency Injection** | All loaders take their dependencies as explicit args (`checkpoint`, `num_labels`, `device`, `tokenizer`, `spec`). No factory hides construction. No module reaches into a registry or global config implicitly. The smoke test (and later, the trainer) is responsible for wiring. |
 | **Pure data vs. behavior** | `Config`, `DatasetSpec`, `KDOutputs` are frozen dataclasses. `KDPair` carries three references and one verb. Registries are plain dicts. |
-| **Public API at the boundary** | `__init__.py` re-exports the wiring blocks users need: `Config`, `DATASET_TWEETEVAL_SENTIMENT`, `DatasetLoader`, `KDPair`, `KDOutputs`, `load_classifier`, `load_tokenizer`, plus the seed/device helpers. Nothing is name-mangled with `_` — DI requires composable, importable building blocks. |
+| **Public API at the boundary** | `__init__.py` re-exports the wiring blocks users need: `Config`, `DATASET_TWEETEVAL_SENTIMENT`, `DatasetLoader`, `BatchEncoder`, `KDPair`, `KDOutputs`, `load_classifier`, `load_tokenizer`, plus the seed/device helpers. Nothing is name-mangled with `_` — DI requires composable, importable building blocks. |
 
 ## Module layout
 
@@ -34,7 +34,7 @@ TinyBERT-XAI/
 │   ├── config.py                    # Config dataclass (project-wide settings)
 │   ├── datasets.py                  # DatasetSpec + DATASET_TWEETEVAL_SENTIMENT
 │   ├── models.py                    # load_tokenizer, load_classifier
-│   ├── data.py                      # DatasetLoader + batch_from_dataset
+│   ├── data.py                      # DatasetLoader + BatchEncoder
 │   ├── utils.py                     # set_seed, get_device, count_params
 │   └── kdpair.py                    # KDPair + KDOutputs
 ├── scripts/
@@ -113,7 +113,7 @@ def load_classifier(
 DI win: callers pass `num_labels` and `device` explicitly. No reaching into config or registry. Testable with any HuggingFace checkpoint and any device string.
 
 ### `src/tinybert_xai/data.py`
-One loader class plus one batch helper:
+One dataset loader plus one batch encoder:
 ```python
 class DatasetLoader:
     def __init__(self, spec: DatasetSpec) -> None:
@@ -122,29 +122,20 @@ class DatasetLoader:
 
     def get_split(self, split: str) -> Dataset: ...
 
-    def load_batch(
+class BatchEncoder:
+    def __init__(
         self,
+        spec: DatasetSpec,
         tokenizer: PreTrainedTokenizerBase,
         *,
-        batch_size: int,
         max_length: int,
-        split: str,
         device: str | None = None,
-    ) -> BatchEncoding: ...
+    ) -> None: ...
 
-def batch_from_dataset(
-    spec: DatasetSpec,
-    ds: Dataset,
-    tokenizer: PreTrainedTokenizerBase,
-    *,
-    batch_size: int,
-    max_length: int,
-    device: str | None = None,
-) -> BatchEncoding:
-    """Return {input_ids, attention_mask, token_type_ids, labels}, padded to max_length,
-    optionally moved to device. Parses raw rows through spec.data_cls.from_row."""
+    def encode(self, ds: Dataset, *, batch_size: int) -> BatchEncoding:
+        """Parse raw rows through spec.data_cls.from_row, tokenize text, and add labels."""
 ```
-DI win: the loader owns the HuggingFace `DatasetDict`, while batching still receives tokenizer and shape choices explicitly. Sentence-pair handling belongs in later dataset adapters that normalize examples into the training format.
+SRP win: `DatasetLoader` owns HuggingFace split loading only; `BatchEncoder` owns row parsing, tokenization, tensor creation, and optional device movement.
 
 ### `src/tinybert_xai/utils.py`
 ```python
@@ -182,7 +173,7 @@ class KDOutputs:
 
 What KDPair **does not** do (compared to HEAD):
 - No `for_dataset` factory. The smoke test wires components explicitly.
-- No `sample_batch`. Dataset batching lives in `DatasetLoader`.
+- No `sample_batch`. Dataset loading lives in `DatasetLoader`; model-ready batch creation lives in `BatchEncoder`.
 - No knowledge of the dataset registry, the device, or `max_seq_length`.
 - No knowledge of param counts — `count_params` is in `utils.py`; smoke test computes them when summarizing.
 
@@ -199,14 +190,14 @@ from tinybert_xai.datasets import (
 )
 from tinybert_xai.kdpair import KDPair, KDOutputs
 from tinybert_xai.models import load_tokenizer, load_classifier
-from tinybert_xai.data import DatasetLoader, batch_from_dataset
+from tinybert_xai.data import BatchEncoder, DatasetLoader
 from tinybert_xai.utils import set_seed, get_device, count_params
 
 __all__ = [
     "Config", "DatasetSpec", "DATASET_TWEETEVAL_SENTIMENT",
     "SentimentLabel", "TweetEvalSentimentData",
     "KDPair", "KDOutputs",
-    "load_tokenizer", "load_classifier", "DatasetLoader", "batch_from_dataset",
+    "load_tokenizer", "load_classifier", "BatchEncoder", "DatasetLoader",
     "set_seed", "get_device", "count_params",
 ]
 ```
@@ -219,7 +210,7 @@ Public surface = every building block. DI requires composability; nothing is hid
 """Iteration 0 smoke test — explicit wiring proves DI/SRP layout works on GPU."""
 import torch
 from tinybert_xai import (
-    Config, DATASET_TWEETEVAL_SENTIMENT, set_seed, get_device, count_params,
+    BatchEncoder, Config, DATASET_TWEETEVAL_SENTIMENT, set_seed, get_device, count_params,
     load_tokenizer, load_classifier, DatasetLoader, KDPair,
 )
 
@@ -234,12 +225,10 @@ def main() -> None:
     student   = load_classifier(cfg.student_checkpoint, spec.num_labels, device)
     pair      = KDPair(teacher, student, tokenizer)
     loader    = DatasetLoader(spec)
+    encoder   = BatchEncoder(spec, tokenizer, max_length=cfg.max_seq_length, device=device)
 
-    batch = loader.load_batch(
-        tokenizer,
-        batch_size=4, max_length=cfg.max_seq_length,
-        split="train", device=device,
-    )
+    train_ds = loader.get_split("train")
+    batch = encoder.encode(train_ds, batch_size=4)
 
     out = pair.forward(batch)
     out.assert_shapes_consistent()

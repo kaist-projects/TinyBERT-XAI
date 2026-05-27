@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Any
+from typing import Any, ClassVar
 
 
 @dataclass(frozen=True)
@@ -22,7 +22,7 @@ class SentimentLabel(IntEnum):
 
 @dataclass(frozen=True)
 class TweetEvalSentimentData:
-    Label = SentimentLabel
+    Label: ClassVar[type[SentimentLabel]] = SentimentLabel
 
     text: str
     label: SentimentLabel

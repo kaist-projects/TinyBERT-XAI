@@ -7,7 +7,7 @@ from tinybert_xai.datasets import (
 )
 from tinybert_xai.kdpair import KDPair, KDOutputs
 from tinybert_xai.models import load_tokenizer, load_classifier
-from tinybert_xai.data import DatasetLoader, batch_from_dataset
+from tinybert_xai.data import BatchEncoder, DatasetLoader
 from tinybert_xai.utils import set_seed, get_device, count_params
 
 __all__ = [
@@ -20,8 +20,8 @@ __all__ = [
     "KDOutputs",
     "load_tokenizer",
     "load_classifier",
+    "BatchEncoder",
     "DatasetLoader",
-    "batch_from_dataset",
     "set_seed",
     "get_device",
     "count_params",

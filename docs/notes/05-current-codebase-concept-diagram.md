@@ -27,7 +27,8 @@ flowchart TD
     Datasets["datasets.py<br/>DatasetSpec<br/>DATASET_TWEETEVAL_SENTIMENT"]
     RowType["TweetEvalSentimentData<br/>text: str<br/>label: SentimentLabel<br/>from_row"]
     Models["models.py<br/>load_tokenizer<br/>load_classifier"]
-    Data["data.py<br/>DatasetLoader<br/>batch_from_dataset"]
+    Loader["data.py<br/>DatasetLoader<br/>loads DatasetDict"]
+    Encoder["data.py<br/>BatchEncoder<br/>raw rows -> BatchEncoding"]
     KDPair["kdpair.py<br/>KDPair.forward"]
     KDOutputs["kdpair.py<br/>KDOutputs<br/>shape checks + summary"]
 
@@ -42,7 +43,8 @@ flowchart TD
     Smoke --> Utils
     Smoke --> Datasets
     Smoke --> Models
-    Smoke --> Data
+    Smoke --> Loader
+    Smoke --> Encoder
     Smoke --> KDPair
 
     Datasets --> HFDataset
@@ -50,12 +52,14 @@ flowchart TD
     Models --> HFTeacher
     Models --> HFStudent
 
-    Data --> Datasets
+    Loader --> Datasets
+    Encoder --> Datasets
     Datasets --> RowType
-    Data --> RowType
-    Data --> HFTokenizer
-    Data --> HFDataset
-    Data --> Batch
+    Encoder --> RowType
+    Encoder --> HFTokenizer
+    Loader --> HFDataset
+    HFDataset --> Encoder
+    Encoder --> Batch
 
     KDPair --> HFTeacher
     KDPair --> HFStudent
@@ -96,7 +100,8 @@ sequenceDiagram
     participant Utils as utils.py
     participant Registry as datasets.py
     participant Models as models.py
-    participant Data as data.py
+    participant Loader as DatasetLoader
+    participant Encoder as BatchEncoder
     participant Pair as KDPair
     participant Outputs as KDOutputs
 
@@ -108,9 +113,12 @@ sequenceDiagram
     Script->>Models: load_classifier(cfg.teacher_checkpoint, num_labels, device)
     Script->>Models: load_classifier(cfg.student_checkpoint, num_labels, device)
     Script->>Pair: KDPair(teacher, student, tokenizer)
-    Script->>Data: DatasetLoader(spec)
-    Script->>Data: loader.load_batch(tokenizer, split="train", batch_size=4, max_length=128)
-    Data-->>Script: BatchEncoding
+    Script->>Loader: DatasetLoader(spec)
+    Script->>Encoder: BatchEncoder(spec, tokenizer, max_length=128)
+    Script->>Loader: get_split("train")
+    Loader-->>Script: HuggingFace Dataset
+    Script->>Encoder: encode(train_ds, batch_size=4)
+    Encoder-->>Script: BatchEncoding
     Script->>Pair: forward(batch)
     Pair-->>Script: KDOutputs
     Script->>Outputs: assert_shapes_consistent()
@@ -125,7 +133,7 @@ sequenceDiagram
 | `src/tinybert_xai/config.py` | Holds basic project settings in `Config`. | Does not load files, models, or datasets. |
 | `src/tinybert_xai/datasets.py` | Defines `DatasetSpec`, `SentimentLabel`, `TweetEvalSentimentData`, and `DATASET_TWEETEVAL_SENTIMENT`. | Does not call HuggingFace loading directly. |
 | `src/tinybert_xai/models.py` | Loads tokenizer and sequence-classification models. | Does not decide which dataset to use. |
-| `src/tinybert_xai/data.py` | `DatasetLoader` loads all HuggingFace splits into a `DatasetDict`; `batch_from_dataset` parses rows through `spec.data_cls.from_row` and tokenizes a small batch. | Does not train or evaluate. |
+| `src/tinybert_xai/data.py` | `DatasetLoader` loads all HuggingFace splits into a `DatasetDict`; `BatchEncoder` parses rows through `spec.data_cls.from_row`, tokenizes text, adds labels, and returns `BatchEncoding`. | Does not train or evaluate. |
 | `src/tinybert_xai/kdpair.py` | Runs teacher and student forward passes on the same batch. | Does not construct models or compute losses. |
 | `src/tinybert_xai/utils.py` | Provides generic helpers for seed, device, and parameter counts. | Does not contain project-specific training logic. |
 | `scripts/00_smoke_test.py` | Wires all pieces together and checks output shapes. | Does not perform optimization or save checkpoints. |

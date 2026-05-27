@@ -2,6 +2,7 @@
 import torch
 
 from tinybert_xai import (
+    BatchEncoder,
     Config,
     DATASET_TWEETEVAL_SENTIMENT,
     DatasetLoader,
@@ -25,14 +26,10 @@ def main() -> None:
     student = load_classifier(cfg.student_checkpoint, spec.num_labels, device)
     pair = KDPair(teacher, student, tokenizer)
     dataset_loader = DatasetLoader(spec)
+    batch_encoder = BatchEncoder(spec, tokenizer, max_length=cfg.max_seq_length, device=device)
 
-    batch = dataset_loader.load_batch(
-        tokenizer,
-        batch_size=4,
-        max_length=cfg.max_seq_length,
-        split="train",
-        device=device,
-    )
+    train_ds = dataset_loader.get_split("train")
+    batch = batch_encoder.encode(train_ds, batch_size=4)
 
     out = pair.forward(batch)
     out.assert_shapes_consistent()
