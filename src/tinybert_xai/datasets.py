@@ -9,11 +9,8 @@ from datasets import Dataset, DatasetDict, load_dataset
 class DatasetSpec:
     hf_path: str
     hf_config: str | None
+    num_labels: int
     data_cls: type
-
-    @property
-    def num_labels(self) -> int:
-        return len(self.data_cls.Label)
 
 
 class SentimentLabel(IntEnum):
@@ -24,8 +21,6 @@ class SentimentLabel(IntEnum):
 
 @dataclass(frozen=True)
 class TweetEvalSentimentData:
-    Label: ClassVar[type[SentimentLabel]] = SentimentLabel
-
     text: str
     label: SentimentLabel
 
@@ -40,6 +35,7 @@ class TweetEvalSentimentData:
 DATASET_TWEETEVAL_SENTIMENT = DatasetSpec(
     hf_path="cardiffnlp/tweet_eval",
     hf_config="sentiment",
+    num_labels=3,
     data_cls=TweetEvalSentimentData,
 )
 

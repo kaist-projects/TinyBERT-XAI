@@ -5,6 +5,7 @@ from tinybert_xai import (
     Config,
     DATASET_TWEETEVAL_SENTIMENT,
     DatasetLoader,
+    KDOutputs,
     KDPair,
     TweetEvalSentimentBatchEncoder,
     count_params,
@@ -13,6 +14,32 @@ from tinybert_xai import (
     load_tokenizer,
     set_seed,
 )
+
+
+def assert_shapes_consistent(out: KDOutputs) -> None:
+    t, s = out.teacher, out.student
+    bs, sl, nl = out.batch_size, out.seq_len, out.num_labels
+
+    assert t.logits.shape == (bs, nl), f"teacher logits {t.logits.shape}"
+    assert s.logits.shape == (bs, nl), f"student logits {s.logits.shape}"
+
+    t_layers = len(t.hidden_states) - 1
+    s_layers = len(s.hidden_states) - 1
+    t_hidden = t.hidden_states[0].shape[-1]
+    s_hidden = s.hidden_states[0].shape[-1]
+    for i, h in enumerate(t.hidden_states):
+        assert h.shape == (bs, sl, t_hidden), f"teacher h[{i}] {h.shape}"
+    for i, h in enumerate(s.hidden_states):
+        assert h.shape == (bs, sl, s_hidden), f"student h[{i}] {h.shape}"
+
+    assert len(t.attentions) == t_layers, f"teacher attentions len={len(t.attentions)}"
+    assert len(s.attentions) == s_layers, f"student attentions len={len(s.attentions)}"
+    t_heads = t.attentions[0].shape[1]
+    s_heads = s.attentions[0].shape[1]
+    for i, a in enumerate(t.attentions):
+        assert a.shape == (bs, t_heads, sl, sl), f"teacher a[{i}] {a.shape}"
+    for i, a in enumerate(s.attentions):
+        assert a.shape == (bs, s_heads, sl, sl), f"student a[{i}] {a.shape}"
 
 
 def main() -> None:
@@ -24,7 +51,7 @@ def main() -> None:
     tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)
     teacher = load_classifier(cfg.teacher_checkpoint, spec.num_labels, device)
     student = load_classifier(cfg.student_checkpoint, spec.num_labels, device)
-    pair = KDPair(teacher, student)
+    pair = KDPair(teacher, student, tokenizer)
     dataset_loader = DatasetLoader(spec)
     batch_encoder = TweetEvalSentimentBatchEncoder(
         tokenizer,
@@ -36,7 +63,7 @@ def main() -> None:
     batch = batch_encoder.encode(train_ds, batch_size=4)
 
     out = pair.forward(batch)
-    out.assert_shapes_consistent()
+    assert_shapes_consistent(out)
 
     peak_vram_gb = torch.cuda.max_memory_allocated() / 1e9
     print(
