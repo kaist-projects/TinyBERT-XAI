@@ -23,6 +23,7 @@ import time
 from dataclasses import asdict
 
 import torch
+from tqdm.auto import tqdm
 
 from tinybert_xai import (
     DATASET_TWEETEVAL_SENTIMENT,
@@ -108,8 +109,15 @@ def main() -> None:
         loss_ce_sum    = 0.0
         grad_norm_sum  = 0.0
         n_batches      = 0
+        total_batches  = (len(shuffled) + cfg.train_batch_size - 1) // cfg.train_batch_size
 
-        for chunk in iter_batches(shuffled, cfg.train_batch_size):
+        pbar = tqdm(
+            iter_batches(shuffled, cfg.train_batch_size),
+            total=total_batches,
+            desc=f"epoch {epoch}",
+            unit="batch",
+        )
+        for chunk in pbar:
             batch = encode_batch(
                 tokenizer, chunk, max_length=cfg.max_seq_length, device=device
             )
@@ -118,7 +126,7 @@ def main() -> None:
             loss = out.loss
 
             if not torch.isfinite(loss):
-                print(f"  [WARN] non-finite loss at epoch {epoch} step {global_step}: {loss.item():.6f} — skipping batch")
+                pbar.write(f"  [WARN] non-finite loss at epoch {epoch} step {global_step}: {loss.item():.6f} — skipping batch")
                 optimizer.zero_grad()
                 continue
 
@@ -132,6 +140,7 @@ def main() -> None:
             grad_norm_sum  += grad_norm.item()
             n_batches      += 1
             global_step    += 1
+            pbar.set_postfix(loss=f"{loss.item():.4f}")
 
         epoch_time = time.perf_counter() - epoch_start
 

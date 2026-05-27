@@ -1,3 +1,4 @@
+import os
 import random
 from typing import Iterator
 
@@ -7,6 +8,9 @@ from datasets import Dataset
 
 
 def set_seed(seed: int) -> None:
+    # Required for deterministic matmul on CUDA >= 10.2; cuBLAS reads it on
+    # first call, so set before any model forward.
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
