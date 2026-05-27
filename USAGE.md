@@ -17,7 +17,7 @@ conda env create -f environment.yml
 # 2. Activate it
 conda activate tinybert-xai
 
-# 3. Install the local src/ package in editable mode
+# 3. Install the local package in editable mode
 pip install -e .
 ```
 
@@ -25,9 +25,7 @@ From here on, activate with `conda activate tinybert-xai` at the start of every 
 
 ---
 
-## Use-case examples
-
-### 1. Smoke test — verify everything works end-to-end
+## Smoke test
 
 Loads teacher + student on GPU, runs one forward pass, checks all tensor shapes.
 
@@ -38,7 +36,13 @@ python scripts/00_smoke_test.py
 
 Expected output:
 ```
-[OK] Smoke test passed. Teacher 109.5M params, student 14.4M params. Peak VRAM: 0.59 GB.
+[OK] Smoke test passed.
+  teacher params    : 109.5M
+  student params    : 14.4M
+  logits            : teacher (4, 3)  student (4, 3)
+  hidden_states     : teacher ×13 (768-d)  student ×5 (312-d)
+  attentions        : teacher ×12  student ×4
+  peak VRAM         : 0.59 GB
 ```
 
 First run downloads `bert-base-uncased` (~440 MB), `TinyBERT_General_4L_312D` (~55 MB),
@@ -46,107 +50,74 @@ and `cardiffnlp/tweet_eval` (~2 MB) into the HuggingFace cache. Subsequent runs 
 
 ---
 
-### 2. Load the teacher model interactively
+## Interactive use
+
+The entire public API is one import:
 
 ```python
-conda activate tinybert-xai
-python
-
->>> from config import Config
->>> from models import load_teacher_for_classification
->>> from utils import get_device, set_seed
-
->>> set_seed(42)
->>> device = get_device()
->>> print(device)          # cuda
-
->>> cfg = Config()
->>> teacher, tok = load_teacher_for_classification(
-...     cfg.teacher_model_name, num_labels=3, device=device
-... )
->>> print(teacher.__class__.__name__)          # BertForSequenceClassification
->>> print(sum(p.numel() for p in teacher.parameters()) / 1e6)   # ~109.5
+from tinybert_xai import KDPair
 ```
 
----
-
-### 3. Load the student model interactively
+### Load the pair for a dataset
 
 ```python
->>> from models import load_student_for_classification
+pair = KDPair.for_dataset("tweet_eval/sentiment")
 
->>> student, _ = load_student_for_classification(
-...     cfg.student_model_name, num_labels=3, device=device
-... )
->>> print(sum(p.numel() for p in student.parameters()) / 1e6)   # ~14.4
+print(pair.num_labels)    # 3
+print(pair.label_names)   # ['negative', 'neutral', 'positive']
+print(pair.device)        # 'cuda'
 ```
 
----
-
-### 4. Inspect hidden states and attention shapes
-
-These are the tensors that knowledge distillation losses in iters 3–5 will consume.
+### Get a batch
 
 ```python
->>> import torch
->>> from data import NUM_LABELS_TWEETEVAL_SENTIMENT, load_tweeteval_sentiment_batch
+batch = pair.sample_batch(n=4)
+# batch is a BatchEncoding already on device
+# keys: input_ids, attention_mask, token_type_ids, labels
+print(batch["input_ids"].shape)   # torch.Size([4, 128])
+print(batch["labels"])            # tensor([...])  — 0=neg, 1=neu, 2=pos
+```
 
->>> batch = load_tweeteval_sentiment_batch(tok, batch_size=4, max_length=128)
->>> batch = {k: v.to(device) for k, v in batch.items()}
+### Run a forward pass
 
->>> with torch.no_grad():
-...     t_out = teacher(**batch)
-...     s_out = student(**batch)
+```python
+out = pair.forward(batch)
 
 # Logits
->>> t_out.logits.shape        # torch.Size([4, 3])
->>> s_out.logits.shape        # torch.Size([4, 3])
+print(out.teacher.logits.shape)   # torch.Size([4, 3])
+print(out.student.logits.shape)   # torch.Size([4, 3])
 
-# Hidden states: embedding layer + one per transformer layer
->>> len(t_out.hidden_states)  # 13  (1 embedding + 12 layers)
->>> len(s_out.hidden_states)  # 5   (1 embedding + 4 layers)
->>> t_out.hidden_states[0].shape   # torch.Size([4, 128, 768])  — embedding
->>> s_out.hidden_states[0].shape   # torch.Size([4, 128, 312])  — embedding
+# Hidden states: embedding + one per transformer layer
+print(len(out.teacher.hidden_states))          # 13  (1 + 12 layers)
+print(len(out.student.hidden_states))          # 5   (1 + 4 layers)
+print(out.teacher.hidden_states[0].shape)      # torch.Size([4, 128, 768])
+print(out.student.hidden_states[0].shape)      # torch.Size([4, 128, 312])
 
 # Attention probabilities: one per transformer layer
->>> len(t_out.attentions)     # 12
->>> len(s_out.attentions)     # 4
->>> t_out.attentions[0].shape # torch.Size([4, 12, 128, 128])  — [batch, heads, seq, seq]
->>> s_out.attentions[0].shape # torch.Size([4, 12, 128, 128])
+print(len(out.teacher.attentions))             # 12
+print(len(out.student.attentions))             # 4
+print(out.teacher.attentions[0].shape)         # torch.Size([4, 12, 128, 128])
+
+# Pretty-print summary
+print(out.summary())
+
+# Assert all shapes are consistent (used by smoke test)
+out.assert_shapes_consistent()
 ```
 
----
-
-### 5. Fetch a real batch from TweetEval-sentiment
+### Override defaults (advanced)
 
 ```python
->>> from data import load_tweeteval_sentiment_batch
-
->>> batch = load_tweeteval_sentiment_batch(tok, batch_size=4, max_length=128, split="train")
->>> list(batch.keys())        # ['input_ids', 'attention_mask', 'token_type_ids', 'labels']
->>> batch["input_ids"].shape  # torch.Size([4, 128])
->>> batch["labels"]           # tensor([...])  — 0=negative, 1=neutral, 2=positive
-```
-
----
-
-### 6. Inspect the global Config
-
-```python
->>> from config import Config
->>> cfg = Config()
->>> cfg.seed                  # 42
->>> cfg.max_seq_length        # 128
->>> cfg.teacher_model_name    # 'bert-base-uncased'
->>> cfg.student_model_name    # 'huawei-noah/TinyBERT_General_4L_312D'
->>> cfg.pilot_dataset         # 'cardiffnlp/tweet_eval'
+pair = KDPair.for_dataset(
+    "tweet_eval/sentiment",
+    device="cpu",     # force CPU
+    seed=0,           # override seed (design doc mandates 42 for experiments)
+)
 ```
 
 ---
 
 ## What's next
-
-Iteration 0 is a smoke test only — no training, no losses, no evaluation.
 
 | Iteration | What it adds |
 |---|---|
