@@ -131,6 +131,8 @@ secrets/
 
 # ─── Serena (local project memory; per-user, not for repo) ─────────────────
 .serena/
+# Serena edit artifacts left behind by interrupted symbolic edits.
+*.tmp.*
 
 # ─── Misc OS / tooling ─────────────────────────────────────────────────────
 .direnv/
