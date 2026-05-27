@@ -3,6 +3,7 @@ from enum import IntEnum
 
 import torch
 from datasets import Dataset, DatasetDict, load_dataset
+from torch.utils.data import DataLoader
 from transformers import BatchEncoding, PreTrainedTokenizerBase
 
 
@@ -56,3 +57,49 @@ def encode_batch(
     if device is not None:
         encoding = encoding.to(device)
     return encoding
+
+
+def build_loader(
+    spec: DatasetSpec,
+    split: str,
+    tokenizer: PreTrainedTokenizerBase,
+    *,
+    max_length: int,
+    batch_size: int,
+    shuffle: bool = False,
+    seed: int | None = None,
+    num_workers: int = 0,
+    pin_memory: bool = True,
+) -> DataLoader:
+    """Tokenize a split once (HF cache) and wrap it in a DataLoader.
+
+    The returned loader yields dicts of CPU tensors {input_ids, attention_mask,
+    labels} ready for `model(**batch)`. Move to device at iteration time.
+
+    For per-epoch reshuffling, pass `shuffle=True, seed=<base>` and call
+    `loader.generator.manual_seed(base + epoch)` before each epoch's loop.
+    """
+    ds = load_split(spec, split)
+    ds = ds.map(
+        lambda batch: tokenizer(
+            batch["text"],
+            padding="max_length",
+            truncation=True,
+            max_length=max_length,
+        ),
+        batched=True,
+        remove_columns=[c for c in ds.column_names if c != "label"],
+    )
+    ds = ds.rename_column("label", "labels")
+    ds = ds.with_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
+
+    generator = torch.Generator().manual_seed(seed) if (shuffle and seed is not None) else None
+
+    return DataLoader(
+        ds,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        generator=generator,
+    )

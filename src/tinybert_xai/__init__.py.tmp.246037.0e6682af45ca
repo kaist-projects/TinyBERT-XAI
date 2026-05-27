@@ -35,7 +35,6 @@ from tinybert_xai.utils import (
     clone_state_dict_cpu,
     count_params,
     get_device,
-    iter_batches,
     set_seed,
 )
 

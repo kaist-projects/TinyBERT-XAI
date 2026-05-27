@@ -9,11 +9,9 @@ import numpy as np
 import sklearn.metrics as skm
 import torch
 
-from tinybert_xai.datasets import encode_batch
-
 if TYPE_CHECKING:
-    from datasets import Dataset
-    from transformers import PreTrainedModel, PreTrainedTokenizerBase
+    from torch.utils.data import DataLoader
+    from transformers import PreTrainedModel
 
 
 @dataclass(frozen=True)
@@ -32,19 +30,13 @@ class EvaluationResult:
 
 def evaluate(
     model: "PreTrainedModel",
-    ds: "Dataset",
-    tokenizer: "PreTrainedTokenizerBase",
+    loader: "DataLoader",
     *,
-    max_length: int,
     device: str,
-    batch_size: int = 32,
     num_classes: int,
 ) -> EvaluationResult:
-    """Run inference over `ds`, return classification + calibration metrics."""
-    preds, labels, probs = _run_inference(
-        model, ds, tokenizer,
-        max_length=max_length, device=device, batch_size=batch_size,
-    )
+    """Run inference over `loader`, return classification + calibration metrics."""
+    preds, labels, probs = _run_inference(model, loader, device=device)
     return EvaluationResult(
         **_classification_metrics(preds, labels, num_classes=num_classes),
         **_calibration_metrics(probs, labels, num_classes=num_classes),
@@ -53,20 +45,16 @@ def evaluate(
 
 def _run_inference(
     model: "PreTrainedModel",
-    ds: "Dataset",
-    tokenizer: "PreTrainedTokenizerBase",
+    loader: "DataLoader",
     *,
-    max_length: int,
     device: str,
-    batch_size: int,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Batched forward pass. Returns (preds, labels, probs) as numpy arrays."""
     model.eval()
     chunks_preds, chunks_labels, chunks_probs = [], [], []
     with torch.no_grad():
-        for start in range(0, len(ds), batch_size):
-            chunk = ds.select(range(start, min(start + batch_size, len(ds))))
-            batch = encode_batch(tokenizer, chunk, max_length=max_length, device=device)
+        for batch in loader:
+            batch = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
             labels = batch.pop("labels")
             logits = model(**batch).logits
             chunks_probs.append(torch.softmax(logits, dim=-1).cpu().numpy())
