@@ -4,10 +4,10 @@ from tinybert_xai.datasets import (
     DatasetLoader,
     DatasetSpec,
     SentimentLabel,
+    encode_batch,
 )
 from tinybert_xai.kdpair import KDPair, KDOutputs
 from tinybert_xai.models import load_tokenizer, load_classifier
-from tinybert_xai.batch import TweetEvalSentimentBatchEncoder
 from tinybert_xai.utils import set_seed, get_device, count_params
 
 __all__ = [
@@ -19,7 +19,7 @@ __all__ = [
     "KDOutputs",
     "load_tokenizer",
     "load_classifier",
-    "TweetEvalSentimentBatchEncoder",
+    "encode_batch",
     "DatasetLoader",
     "set_seed",
     "get_device",

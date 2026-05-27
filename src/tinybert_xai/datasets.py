@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from enum import IntEnum
 
+import torch
 from datasets import Dataset, DatasetDict, load_dataset
+from transformers import BatchEncoding, PreTrainedTokenizerBase
 
 
 @dataclass(frozen=True)
@@ -39,3 +41,23 @@ class DatasetLoader:
 
     def get_batch(self, split: str, indices: range | list[int]) -> Dataset:
         return self.get_split(split).select(indices)
+
+
+def encode_batch(
+    tokenizer: PreTrainedTokenizerBase,
+    ds: Dataset,
+    *,
+    max_length: int,
+    device: str | None = None,
+) -> BatchEncoding:
+    encoding = tokenizer(
+        ds["text"],
+        padding="max_length",
+        truncation=True,
+        max_length=max_length,
+        return_tensors="pt",
+    )
+    encoding["labels"] = torch.tensor(ds["label"], dtype=torch.long)
+    if device is not None:
+        encoding = encoding.to(device)
+    return encoding

@@ -7,8 +7,8 @@ from tinybert_xai import (
     DatasetLoader,
     KDOutputs,
     KDPair,
-    TweetEvalSentimentBatchEncoder,
     count_params,
+    encode_batch,
     get_device,
     load_classifier,
     load_tokenizer,
@@ -54,14 +54,8 @@ def main() -> None:
     pair = KDPair(teacher, student)
 
     dataset_loader = DatasetLoader(spec)
-    batch_encoder = TweetEvalSentimentBatchEncoder(
-        tokenizer,
-        max_length=cfg.max_seq_length,
-        device=device,
-    )
-
     raw = dataset_loader.get_batch("train", range(4))
-    batch = batch_encoder.encode(raw)
+    batch = encode_batch(tokenizer, raw, max_length=cfg.max_seq_length, device=device)
 
     out = pair.forward(batch)
     assert_shapes_consistent(out)
