@@ -47,8 +47,11 @@ class DatasetLoader:
         if not isinstance(self.splits, DatasetDict):
             raise TypeError(f"Expected DatasetDict, got {type(self.splits).__name__}")
 
-    def get(self, split: str) -> Dataset:
+    def get_split(self, split: str) -> Dataset:
         ds = self.splits[split]
         if not isinstance(ds, Dataset):
             raise TypeError(f"Expected Dataset for split={split!r}, got {type(ds).__name__}")
         return ds
+
+    def get_batch(self, split: str, indices: range | list[int]) -> Dataset:
+        return self.get_split(split).select(indices)

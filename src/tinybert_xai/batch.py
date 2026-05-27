@@ -16,9 +16,8 @@ class TweetEvalSentimentBatchEncoder:
         self.max_length = max_length
         self.device = device
 
-    def encode(self, ds: Dataset, *, batch_size: int) -> BatchEncoding:
-        examples = ds.select(range(batch_size))
-        rows = [TweetEvalSentimentData.from_row(row) for row in examples]
+    def encode(self, ds: Dataset) -> BatchEncoding:
+        rows = [TweetEvalSentimentData.from_row(row) for row in ds]
         encoding = self.tokenizer(
             [row.text for row in rows],
             padding="max_length",

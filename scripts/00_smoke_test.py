@@ -51,7 +51,8 @@ def main() -> None:
     tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)
     teacher = load_classifier(cfg.teacher_checkpoint, spec.num_labels, device)
     student = load_classifier(cfg.student_checkpoint, spec.num_labels, device)
-    pair = KDPair(teacher, student, tokenizer)
+    pair = KDPair(teacher, student)
+
     dataset_loader = DatasetLoader(spec)
     batch_encoder = TweetEvalSentimentBatchEncoder(
         tokenizer,
@@ -59,8 +60,8 @@ def main() -> None:
         device=device,
     )
 
-    train_ds = dataset_loader.get("train")
-    batch = batch_encoder.encode(train_ds, batch_size=4)
+    raw = dataset_loader.get_batch("train", range(4))
+    batch = batch_encoder.encode(raw)
 
     out = pair.forward(batch)
     assert_shapes_consistent(out)
