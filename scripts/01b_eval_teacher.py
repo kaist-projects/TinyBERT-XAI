@@ -26,11 +26,11 @@ import torch
 from tinybert_xai import (
     DATASET_TWEETEVAL_SENTIMENT,
     Config,
+    build_loader,
     compute_efficiency,
     evaluate,
     get_device,
     load_classifier,
-    load_split,
     load_state_dict,
     load_tokenizer,
     results_dir,
@@ -75,17 +75,25 @@ def main() -> None:
 
     # ── load dev + test splits ───────────────────────────────────────────────
     print("Loading datasets …")
-    dev_ds  = load_split(spec, "validation")
-    test_ds = load_split(spec, "test")
-    print(f"  dev={len(dev_ds)}  test={len(test_ds)}")
+    dev_loader  = build_loader(
+        spec, "validation", tokenizer,
+        max_length=cfg.max_seq_length,
+        batch_size=cfg.eval_batch_size,
+    )
+    test_loader = build_loader(
+        spec, "test", tokenizer,
+        max_length=cfg.max_seq_length,
+        batch_size=cfg.eval_batch_size,
+    )
+    n_dev  = len(dev_loader.dataset)
+    n_test = len(test_loader.dataset)
+    print(f"  dev={n_dev}  test={n_test}")
 
     # ── dev evaluation (best-epoch dev metrics) ──────────────────────────────
     print("\nEvaluating on dev split …")
     dev_result = evaluate(
-        model, dev_ds, tokenizer,
-        max_length=cfg.max_seq_length,
+        model, dev_loader,
         device=device,
-        batch_size=cfg.eval_batch_size,
         num_classes=spec.num_labels,
     )
     print(f"  dev macro-F1 : {dev_result.macro_f1:.4f}")
@@ -95,10 +103,8 @@ def main() -> None:
     # ── test evaluation (use ONCE) ────────────────────────────────────────────
     print("\nEvaluating on test split …")
     test_result = evaluate(
-        model, test_ds, tokenizer,
-        max_length=cfg.max_seq_length,
+        model, test_loader,
         device=device,
-        batch_size=cfg.eval_batch_size,
         num_classes=spec.num_labels,
     )
     # teacher-student analysis fields are N/A for the teacher stage
@@ -134,7 +140,7 @@ def main() -> None:
     with open(metadata_path) as f:
         metadata = json.load(f)
 
-    metadata["splits"]["test"] = len(test_ds)
+    metadata["splits"]["test"] = n_test
     metadata["dev_metrics"]   = asdict(dev_result)
     metadata["test_metrics"]  = test_metrics
     metadata["efficiency"]    = asdict(efficiency)

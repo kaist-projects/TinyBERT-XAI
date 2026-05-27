@@ -35,7 +35,6 @@ from tinybert_xai.utils import (
     clone_state_dict_cpu,
     count_params,
     get_device,
-    iter_batches,
     set_seed,
 )
 
@@ -46,6 +45,7 @@ __all__ = [
     "DatasetSpec",
     "SentimentLabel",
     "DATASET_TWEETEVAL_SENTIMENT",
+    "build_loader",
     "encode_batch",
     "load_split",
     # eval
@@ -78,5 +78,4 @@ __all__ = [
     "get_device",
     "count_params",
     "clone_state_dict_cpu",
-    "iter_batches",
 ]

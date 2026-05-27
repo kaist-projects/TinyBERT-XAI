@@ -31,16 +31,14 @@ from tinybert_xai import (
     EarlyStopper,
     RunMetadata,
     TrainEpochEntry,
+    build_loader,
     clone_state_dict_cpu,
     collect_hardware,
     collect_package_versions,
-    encode_batch,
     evaluate,
     get_device,
-    iter_batches,
     load_classifier,
     load_tokenizer,
-    load_split,
     make_run_id,
     results_dir,
     save_state_dict,
@@ -75,14 +73,24 @@ def main() -> None:
 
     # ── load data ────────────────────────────────────────────────────────────
     print("Loading datasets …")
-    train_ds = load_split(spec, "train")
-    dev_ds   = load_split(spec, "validation")
-
-    meta.splits = {"train": len(train_ds), "validation": len(dev_ds)}
-    print(f"  train={len(train_ds)}  dev={len(dev_ds)}")
+    tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)
+    train_loader = build_loader(
+        spec, "train", tokenizer,
+        max_length=cfg.max_seq_length,
+        batch_size=cfg.train_batch_size,
+        shuffle=True, seed=cfg.seed,
+    )
+    dev_loader = build_loader(
+        spec, "validation", tokenizer,
+        max_length=cfg.max_seq_length,
+        batch_size=cfg.eval_batch_size,
+    )
+    n_train = len(train_loader.dataset)
+    n_dev   = len(dev_loader.dataset)
+    meta.splits = {"train": n_train, "validation": n_dev}
+    print(f"  train={n_train}  dev={n_dev}")
 
     # ── load model ───────────────────────────────────────────────────────────
-    tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)
     model = load_classifier(cfg.teacher_checkpoint, spec.num_labels, device)
     model.train()
 
@@ -104,23 +112,22 @@ def main() -> None:
         epoch_start = time.perf_counter()
         model.train()
 
-        shuffled = train_ds.shuffle(seed=cfg.seed + epoch)
+        # Deterministic per-epoch reshuffle.
+        train_loader.generator.manual_seed(cfg.seed + epoch)
+
         loss_total_sum = 0.0
         loss_ce_sum    = 0.0
         grad_norm_sum  = 0.0
         n_batches      = 0
-        total_batches  = (len(shuffled) + cfg.train_batch_size - 1) // cfg.train_batch_size
 
         pbar = tqdm(
-            iter_batches(shuffled, cfg.train_batch_size),
-            total=total_batches,
+            train_loader,
+            total=len(train_loader),
             desc=f"epoch {epoch}",
             unit="batch",
         )
-        for chunk in pbar:
-            batch = encode_batch(
-                tokenizer, chunk, max_length=cfg.max_seq_length, device=device
-            )
+        for batch in pbar:
+            batch = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
 
             out = model(**batch)   # AutoModelForSequenceClassification: loss = CE when labels present
             loss = out.loss
@@ -150,10 +157,8 @@ def main() -> None:
 
         # ── dev eval ─────────────────────────────────────────────────────
         dev_result = evaluate(
-            model, dev_ds, tokenizer,
-            max_length=cfg.max_seq_length,
+            model, dev_loader,
             device=device,
-            batch_size=cfg.eval_batch_size,
             num_classes=spec.num_labels,
         )
 
