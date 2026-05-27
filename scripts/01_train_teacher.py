@@ -21,9 +21,7 @@ from __future__ import annotations
 
 import datetime
 import json
-import os
 import platform
-import sys
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -193,7 +191,7 @@ def main() -> None:
         avg_grad_norm  = grad_norm_sum  / max(n_batches, 1)
 
         # ── dev eval ─────────────────────────────────────────────────────
-        dev_metrics = evaluate(
+        dev_result = evaluate(
             model, dev_ds, tokenizer,
             max_length=cfg.max_seq_length,
             device=device,
@@ -218,20 +216,20 @@ def main() -> None:
             "global_step":            global_step,
             "epoch_time_seconds":     epoch_time,
             # dev metrics (primary only; full metrics in dev_metrics)
-            "dev_macro_f1":  dev_metrics["macro_f1"],
-            "dev_micro_f1":  dev_metrics["micro_f1"],
-            "dev_accuracy":  dev_metrics["accuracy"],
-            "dev_ECE":       dev_metrics["ECE"],
-            "dev_NLL":       dev_metrics["NLL"],
-            "dev_Brier":     dev_metrics["Brier"],
+            "dev_macro_f1":  dev_result.macro_f1,
+            "dev_micro_f1":  dev_result.micro_f1,
+            "dev_accuracy":  dev_result.accuracy,
+            "dev_ECE":       dev_result.ECE,
+            "dev_NLL":       dev_result.NLL,
+            "dev_Brier":     dev_result.Brier,
         }
         history.append(epoch_entry)
 
         print(
             f"  epoch {epoch}  "
             f"train_loss={avg_loss_total:.4f}  "
-            f"dev_macro_f1={dev_metrics['macro_f1']:.4f}  "
-            f"dev_acc={dev_metrics['accuracy']:.4f}  "
+            f"dev_macro_f1={dev_result.macro_f1:.4f}  "
+            f"dev_acc={dev_result.accuracy:.4f}  "
             f"({epoch_time:.1f}s)"
         )
 
@@ -243,8 +241,8 @@ def main() -> None:
         )
 
         # ── early stopping ────────────────────────────────────────────────
-        if dev_metrics["macro_f1"] > best_f1:
-            best_f1    = dev_metrics["macro_f1"]
+        if dev_result.macro_f1 > best_f1:
+            best_f1    = dev_result.macro_f1
             best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
             best_epoch = epoch
             no_improve = 0

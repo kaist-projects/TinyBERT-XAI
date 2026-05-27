@@ -19,6 +19,7 @@ Writes
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 import torch
@@ -80,20 +81,20 @@ def main() -> None:
 
     # ── dev evaluation (best-epoch dev metrics) ──────────────────────────────
     print("\nEvaluating on dev split …")
-    dev_metrics = evaluate(
+    dev_result = evaluate(
         model, dev_ds, tokenizer,
         max_length=cfg.max_seq_length,
         device=device,
         batch_size=cfg.eval_batch_size,
         num_classes=spec.num_labels,
     )
-    print(f"  dev macro-F1 : {dev_metrics['macro_f1']:.4f}")
-    print(f"  dev accuracy : {dev_metrics['accuracy']:.4f}")
-    print(f"  dev ECE      : {dev_metrics['ECE']:.4f}")
+    print(f"  dev macro-F1 : {dev_result.macro_f1:.4f}")
+    print(f"  dev accuracy : {dev_result.accuracy:.4f}")
+    print(f"  dev ECE      : {dev_result.ECE:.4f}")
 
     # ── test evaluation (use ONCE) ────────────────────────────────────────────
     print("\nEvaluating on test split …")
-    test_metrics = evaluate(
+    test_result = evaluate(
         model, test_ds, tokenizer,
         max_length=cfg.max_seq_length,
         device=device,
@@ -101,16 +102,17 @@ def main() -> None:
         num_classes=spec.num_labels,
     )
     # teacher-student analysis fields are N/A for the teacher stage
-    test_metrics["top1_agreement"]               = None
-    test_metrics["teacher_student_kl"]           = None
+    test_metrics = asdict(test_result)
+    test_metrics["top1_agreement"]                = None
+    test_metrics["teacher_student_kl"]            = None
     test_metrics["teacher_correct_student_wrong"] = None
     test_metrics["teacher_wrong_student_correct"] = None
-    test_metrics["error_copying"]                = None
+    test_metrics["error_copying"]                 = None
 
-    print(f"  test macro-F1 : {test_metrics['macro_f1']:.4f}")
-    print(f"  test accuracy : {test_metrics['accuracy']:.4f}")
-    print(f"  test ECE      : {test_metrics['ECE']:.4f}")
-    print(f"  per-class F1  : {[f'{v:.3f}' for v in test_metrics['per_class_f1']]}")
+    print(f"  test macro-F1 : {test_result.macro_f1:.4f}")
+    print(f"  test accuracy : {test_result.accuracy:.4f}")
+    print(f"  test ECE      : {test_result.ECE:.4f}")
+    print(f"  per-class F1  : {[f'{v:.3f}' for v in test_result.per_class_f1]}")
 
     # ── efficiency metrics ────────────────────────────────────────────────────
     print("\nMeasuring efficiency …")
@@ -120,22 +122,22 @@ def main() -> None:
         max_length=cfg.max_seq_length,
         batch_size=cfg.eval_batch_size,
     )
-    print(f"  latency p50   : {efficiency['latency_p50_ms']:.1f} ms/batch")
-    print(f"  latency p95   : {efficiency['latency_p95_ms']:.1f} ms/batch")
-    print(f"  throughput    : {efficiency['throughput_samples_per_sec']:.0f} samples/s")
-    print(f"  model size    : {efficiency['model_size_mb']:.1f} MB")
-    print(f"  param count   : {efficiency['parameter_count']:,}")
-    if efficiency["gpu_memory_mb"] is not None:
-        print(f"  peak GPU mem  : {efficiency['gpu_memory_mb']:.1f} MB")
+    print(f"  latency p50   : {efficiency.latency_p50_ms:.1f} ms/batch")
+    print(f"  latency p95   : {efficiency.latency_p95_ms:.1f} ms/batch")
+    print(f"  throughput    : {efficiency.throughput_samples_per_sec:.0f} samples/s")
+    print(f"  model size    : {efficiency.model_size_mb:.1f} MB")
+    print(f"  param count   : {efficiency.parameter_count:,}")
+    if efficiency.gpu_memory_mb is not None:
+        print(f"  peak GPU mem  : {efficiency.gpu_memory_mb:.1f} MB")
 
     # ── update run_metadata.json ─────────────────────────────────────────────
     with open(metadata_path) as f:
         metadata = json.load(f)
 
     metadata["splits"]["test"] = len(test_ds)
-    metadata["dev_metrics"]   = dev_metrics
+    metadata["dev_metrics"]   = asdict(dev_result)
     metadata["test_metrics"]  = test_metrics
-    metadata["efficiency"]    = efficiency
+    metadata["efficiency"]    = asdict(efficiency)
 
     with open(metadata_path, "w") as f:
         json.dump(metadata, f, indent=2)
@@ -145,8 +147,8 @@ def main() -> None:
 
     # ── summary ─────────────────────────────────────────────────────────────
     print("\n── Summary ─────────────────────────────────────────")
-    print(f"  test macro-F1  : {test_metrics['macro_f1']:.4f}  (target ≥ 0.62)")
-    pass_fail = "✓ PASS" if test_metrics["macro_f1"] >= 0.62 else "✗ FAIL"
+    print(f"  test macro-F1  : {test_result.macro_f1:.4f}  (target ≥ 0.62)")
+    pass_fail = "✓ PASS" if test_result.macro_f1 >= 0.62 else "✗ FAIL"
     print(f"  DoD check      : {pass_fail}")
 
 
