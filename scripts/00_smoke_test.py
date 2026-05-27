@@ -4,13 +4,13 @@ import torch
 from tinybert_xai import (
     Config,
     DATASET_TWEETEVAL_SENTIMENT,
-    DatasetLoader,
     KDOutputs,
     KDPair,
     count_params,
     encode_batch,
     get_device,
     load_classifier,
+    load_split,
     load_tokenizer,
     set_seed,
 )
@@ -53,8 +53,7 @@ def main() -> None:
     student = load_classifier(cfg.student_checkpoint, spec.num_labels, device)
     pair = KDPair(teacher, student)
 
-    dataset_loader = DatasetLoader(spec)
-    raw = dataset_loader.get_batch("train", range(4))
+    raw = load_split(spec, "train").select(range(4))
     batch = encode_batch(tokenizer, raw, max_length=cfg.max_seq_length, device=device)
 
     out = pair.forward(batch)

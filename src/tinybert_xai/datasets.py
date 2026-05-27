@@ -26,21 +26,14 @@ DATASET_TWEETEVAL_SENTIMENT = DatasetSpec(
 )
 
 
-class DatasetLoader:
-    def __init__(self, spec: DatasetSpec) -> None:
-        self.spec = spec
-        self.splits = load_dataset(spec.hf_path, spec.hf_config)
-        if not isinstance(self.splits, DatasetDict):
-            raise TypeError(f"Expected DatasetDict, got {type(self.splits).__name__}")
-
-    def get_split(self, split: str) -> Dataset:
-        ds = self.splits[split]
-        if not isinstance(ds, Dataset):
-            raise TypeError(f"Expected Dataset for split={split!r}, got {type(ds).__name__}")
-        return ds
-
-    def get_batch(self, split: str, indices: range | list[int]) -> Dataset:
-        return self.get_split(split).select(indices)
+def load_split(spec: DatasetSpec, split: str) -> Dataset:
+    splits = load_dataset(spec.hf_path, spec.hf_config)
+    if not isinstance(splits, DatasetDict):
+        raise TypeError(f"Expected DatasetDict, got {type(splits).__name__}")
+    ds = splits[split]
+    if not isinstance(ds, Dataset):
+        raise TypeError(f"Expected Dataset for split={split!r}, got {type(ds).__name__}")
+    return ds
 
 
 def encode_batch(
