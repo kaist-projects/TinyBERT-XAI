@@ -4,7 +4,6 @@ from tinybert_xai.datasets import (
     DatasetLoader,
     DatasetSpec,
     SentimentLabel,
-    TweetEvalSentimentData,
 )
 from tinybert_xai.kdpair import KDPair, KDOutputs
 from tinybert_xai.models import load_tokenizer, load_classifier
@@ -15,7 +14,6 @@ __all__ = [
     "Config",
     "DatasetSpec",
     "SentimentLabel",
-    "TweetEvalSentimentData",
     "DATASET_TWEETEVAL_SENTIMENT",
     "KDPair",
     "KDOutputs",
