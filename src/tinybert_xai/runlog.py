@@ -12,6 +12,36 @@ import torch
 
 
 @dataclass
+class TrainEpochEntry:
+    """Per-epoch training history entry. Design doc §6 schema.
+
+    KD-loss fields are None for the teacher (CE-only) and float for student
+    runs that activate the corresponding signal.
+    """
+
+    epoch: int
+    train_loss_total: float
+    train_loss_ce: float
+    train_raw_loss_ce: float
+    train_loss_logit: float | None
+    train_raw_loss_logit: float | None
+    train_loss_hidden: float | None
+    train_raw_loss_hidden: float | None
+    train_loss_attention: float | None
+    train_raw_loss_attention: float | None
+    grad_norm_mean: float
+    learning_rate: float
+    global_step: int
+    epoch_time_seconds: float
+    dev_macro_f1: float
+    dev_micro_f1: float
+    dev_accuracy: float
+    dev_ECE: float
+    dev_NLL: float
+    dev_Brier: float
+
+
+@dataclass
 class RunMetadata:
     """Top-level run_metadata.json schema.
 

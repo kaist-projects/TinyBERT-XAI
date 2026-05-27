@@ -24,6 +24,7 @@ from tinybert_xai.kdpair import KDPair, KDOutputs
 from tinybert_xai.models import load_tokenizer, load_classifier
 from tinybert_xai.runlog import (
     RunMetadata,
+    TrainEpochEntry,
     collect_hardware,
     collect_package_versions,
     make_run_id,
@@ -58,6 +59,7 @@ __all__ = [
     "load_classifier",
     # runlog
     "RunMetadata",
+    "TrainEpochEntry",
     "make_run_id",
     "collect_package_versions",
     "collect_hardware",

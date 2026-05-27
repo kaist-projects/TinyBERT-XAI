@@ -29,6 +29,7 @@ from tinybert_xai import (
     Config,
     EarlyStopper,
     RunMetadata,
+    TrainEpochEntry,
     clone_state_dict_cpu,
     collect_hardware,
     collect_package_versions,
@@ -147,29 +148,29 @@ def main() -> None:
             num_classes=spec.num_labels,
         )
 
-        history.append({
-            "epoch": epoch,
-            # §6 loss fields (teacher: KD losses are null)
-            "train_loss_total":       avg_loss_total,
-            "train_loss_ce":          avg_loss_ce,
-            "train_raw_loss_ce":      avg_loss_ce,
-            "train_loss_logit":       None,
-            "train_raw_loss_logit":   None,
-            "train_loss_hidden":      None,
-            "train_raw_loss_hidden":  None,
-            "train_loss_attention":   None,
-            "train_raw_loss_attention": None,
-            "grad_norm_mean":         avg_grad_norm,
-            "learning_rate":          cfg.learning_rate,
-            "global_step":            global_step,
-            "epoch_time_seconds":     epoch_time,
-            "dev_macro_f1":  dev_result.macro_f1,
-            "dev_micro_f1":  dev_result.micro_f1,
-            "dev_accuracy":  dev_result.accuracy,
-            "dev_ECE":       dev_result.ECE,
-            "dev_NLL":       dev_result.NLL,
-            "dev_Brier":     dev_result.Brier,
-        })
+        entry = TrainEpochEntry(
+            epoch=epoch,
+            train_loss_total=avg_loss_total,
+            train_loss_ce=avg_loss_ce,
+            train_raw_loss_ce=avg_loss_ce,
+            train_loss_logit=None,
+            train_raw_loss_logit=None,
+            train_loss_hidden=None,
+            train_raw_loss_hidden=None,
+            train_loss_attention=None,
+            train_raw_loss_attention=None,
+            grad_norm_mean=avg_grad_norm,
+            learning_rate=cfg.learning_rate,
+            global_step=global_step,
+            epoch_time_seconds=epoch_time,
+            dev_macro_f1=dev_result.macro_f1,
+            dev_micro_f1=dev_result.micro_f1,
+            dev_accuracy=dev_result.accuracy,
+            dev_ECE=dev_result.ECE,
+            dev_NLL=dev_result.NLL,
+            dev_Brier=dev_result.Brier,
+        )
+        history.append(asdict(entry))
 
         print(
             f"  epoch {epoch}  "
