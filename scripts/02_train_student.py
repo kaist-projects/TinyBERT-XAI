@@ -60,7 +60,7 @@ def main() -> None:
     result = fine_tune_student(cfg, spec, cond, data, student, device=device)
     best_ckpt_path, metadata_path = save_student_training_result(meta, result, spec, cond)
 
-    print(f"\nBest checkpoint: epoch {result.best_epoch}, dev macro-F1={result.best_dev_macro_f1:.4f}")
+    print(f"\nBest checkpoint: epoch {result.best_epoch}")
     print(f"Saved to: {best_ckpt_path}")
     print(f"Metadata written to: {metadata_path}")
 

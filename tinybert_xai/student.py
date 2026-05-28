@@ -16,7 +16,7 @@ from tinybert_xai.checkpoints import load_state_dict, results_dir, save_state_di
 from tinybert_xai.conditions import ConditionSpec
 from tinybert_xai.datasets import build_loader
 from tinybert_xai.earlystop import EarlyStopper
-from tinybert_xai.eval import EfficiencyMetrics, EvaluationResult, compute_efficiency, evaluate
+from tinybert_xai.eval import EvaluationResult, evaluate
 from tinybert_xai.losses import compute_student_losses
 from tinybert_xai.models import load_classifier, load_tokenizer
 from tinybert_xai.runlog import (
@@ -66,7 +66,6 @@ class StudentEpochStats:
 class StudentTrainingResult:
     best_state: dict[str, torch.Tensor]
     best_epoch: int
-    best_dev_macro_f1: float
     early_stopped: bool
     history: list[dict]
     train_time_seconds: float
@@ -81,7 +80,6 @@ class StudentEvaluationResult:
     dev_result: EvaluationResult
     test_result: EvaluationResult
     test_metrics: dict
-    efficiency: EfficiencyMetrics
 
 
 def start_student_metadata(
@@ -250,7 +248,6 @@ def fine_tune_student(
     return StudentTrainingResult(
         best_state=best_state,
         best_epoch=stopper.best_step,
-        best_dev_macro_f1=stopper.best_value,
         early_stopped=early_stopped,
         history=history,
         train_time_seconds=time.perf_counter() - total_train_start,
@@ -342,7 +339,6 @@ def save_student_training_result(
     meta.checkpoint_selection["checkpoint"] = str(best_ckpt_path)
     meta.training = {
         "epochs_completed": len(result.history),
-        "best_dev_macro_f1": result.best_dev_macro_f1,
         "train_time_seconds": result.train_time_seconds,
         "history": result.history,
     }
@@ -384,13 +380,6 @@ def evaluate_saved_student(
 
     dev_result = evaluate(model, dev_loader, device=device, num_classes=spec.num_labels)
     test_result = evaluate(model, test_loader, device=device, num_classes=spec.num_labels)
-    efficiency = compute_efficiency(
-        model,
-        tokenizer,
-        device=device,
-        max_length=cfg.max_seq_length,
-        batch_size=cfg.eval_batch_size,
-    )
 
     return StudentEvaluationResult(
         metadata_path=metadata_path,
@@ -399,7 +388,6 @@ def evaluate_saved_student(
         dev_result=dev_result,
         test_result=test_result,
         test_metrics=_student_test_metrics(test_result),
-        efficiency=efficiency,
     )
 
 
@@ -412,7 +400,6 @@ def save_student_evaluation_result(result: StudentEvaluationResult) -> None:
         "dev": asdict(result.dev_result),
         "test": result.test_metrics,
     }
-    metadata["efficiency"] = asdict(result.efficiency)
 
     with open(result.metadata_path, "w") as f:
         f.write(dumps_metadata_payload(metadata))

@@ -43,7 +43,6 @@ class RunMetadata:
     environment: dict
     training: dict | None = None
     metrics: dict = field(default_factory=dict)
-    efficiency: dict | None = None
 
 
 def make_run_id(stage: str, dataset_name: str, condition: str | None = None) -> str:

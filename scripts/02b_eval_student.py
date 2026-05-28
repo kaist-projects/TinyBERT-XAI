@@ -1,7 +1,7 @@
 """scripts/02b_eval_student.py - Test-set evaluation of the CE-only student.
 
-Loads best.pt into a fresh TinyBERT student, evaluates dev/test, measures
-efficiency, and patches the student's schema-v2 run_metadata.json.
+Loads best.pt into a fresh TinyBERT student, evaluates dev/test, and patches
+the student's schema-v2 run_metadata.json.
 
 Run AFTER 02_train_student.py has completed.
 
@@ -56,13 +56,6 @@ def main() -> None:
     print(f"  test accuracy : {result.test_result.accuracy:.4f}")
     print(f"  test ECE      : {result.test_result.ECE:.4f}")
     print(f"  per-class F1  : {[f'{v:.3f}' for v in result.test_result.per_class_f1]}")
-    print(f"  latency p50   : {result.efficiency.latency_p50_ms:.1f} ms/batch")
-    print(f"  latency p95   : {result.efficiency.latency_p95_ms:.1f} ms/batch")
-    print(f"  throughput    : {result.efficiency.throughput_samples_per_sec:.0f} samples/s")
-    print(f"  model size    : {result.efficiency.model_size_mb:.1f} MB")
-    print(f"  param count   : {result.efficiency.parameter_count:,}")
-    if result.efficiency.gpu_memory_mb is not None:
-        print(f"  peak GPU mem  : {result.efficiency.gpu_memory_mb:.1f} MB")
 
     save_student_evaluation_result(result)
     print(f"\nrun_metadata.json updated: {result.metadata_path}")

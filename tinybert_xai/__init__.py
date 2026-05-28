@@ -28,9 +28,7 @@ from tinybert_xai.datasets import (
 )
 from tinybert_xai.earlystop import EarlyStopper
 from tinybert_xai.eval import (
-    EfficiencyMetrics,
     EvaluationResult,
-    compute_efficiency,
     evaluate,
 )
 from tinybert_xai.kdpair import KDPair, KDOutputs
@@ -104,9 +102,7 @@ __all__ = [
     "KD_FULL",
     "ALL_CONDITIONS",
     # eval
-    "EfficiencyMetrics",
     "EvaluationResult",
-    "compute_efficiency",
     "evaluate",
     # models / kdpair
     "KDPair",

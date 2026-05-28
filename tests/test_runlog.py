@@ -61,7 +61,6 @@ def test_schema_v2_rounding_and_teacher_fields(tmp_path):
         },
         training={
             "epochs_completed": 1,
-            "best_dev_macro_f1": 0.7201311861596489,
             "train_time_seconds": 857.0005699680041,
             "history": [
                 {
@@ -94,14 +93,6 @@ def test_schema_v2_rounding_and_teacher_fields(tmp_path):
                 "Brier": 0.37071138620376587,
             }
         },
-        efficiency={
-            "latency_p50_ms": 49.69830322265625,
-            "latency_p95_ms": 49.90097770690918,
-            "throughput_samples_per_sec": 643.839053437915,
-            "model_size_mb": 417.7276916503906,
-            "parameter_count": 109484547,
-            "gpu_memory_mb": 990.81689453125,
-        },
     )
 
     path = tmp_path / "run_metadata.json"
@@ -115,12 +106,11 @@ def test_schema_v2_rounding_and_teacher_fields(tmp_path):
     assert payload["optimization"]["learning_rate"] == 2e-5
     assert payload["optimization"]["weight_decay"] == 0.01
     assert payload["optimization"]["eps"] == 1e-8
-    assert payload["training"]["best_dev_macro_f1"] == 0.72013
     assert payload["training"]["train_time_seconds"] == 857.00057
     assert payload["training"]["history"][0]["loss_total"] == 0.65548
     assert payload["training"]["history"][0]["epoch_time_seconds"] == 273.79378
-    assert payload["efficiency"]["latency_p50_ms"] == 49.6983
-    assert payload["efficiency"]["throughput_samples_per_sec"] == 643.83905
+    assert "efficiency" not in payload
+    assert "best_dev_macro_f1" not in payload["training"]
     assert payload["metrics"]["dev"]["confusion_matrix"] == [[215, 74, 23], [104, 581, 184]]
 
     assert "train_raw_loss_ce" not in text
@@ -192,7 +182,6 @@ def test_student_schema_v2_uses_condition_and_active_losses(tmp_path):
         },
         training={
             "epochs_completed": 1,
-            "best_dev_macro_f1": 0.5333333333333333,
             "train_time_seconds": 201.123456789,
             "history": [
                 {
