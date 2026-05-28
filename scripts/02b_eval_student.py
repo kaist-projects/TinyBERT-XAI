@@ -1,4 +1,4 @@
-"""scripts/02b_eval_student.py - Test-set evaluation of the hidden-KD student.
+"""scripts/02b_eval_student.py - Test-set evaluation of a TinyBERT student.
 
 Loads best.pt into a fresh TinyBERT student, evaluates dev/test, computes
 teacher-student analysis, and patches the student's schema-v2 run_metadata.json.
@@ -9,11 +9,11 @@ Usage
 -----
     conda activate tinybert-xai
     # from repo root
-    python scripts/02b_eval_student.py
+    python scripts/02b_eval_student.py kd_attn
 
 Writes
 ------
-    results/students/tweet_eval-sentiment/kd_hidden/run_metadata.json
+    results/students/tweet_eval-sentiment/<condition>/run_metadata.json
 """
 
 from __future__ import annotations
@@ -24,8 +24,8 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from tinybert_xai import (  # noqa: E402
+    CONDITIONS_BY_NAME,
     DATASET_TWEETEVAL_SENTIMENT,
-    KD_HIDDEN, KD_LOGIT_HIDDEN,
     Config,
     configure_reproducibility,
     evaluate_saved_student,
@@ -40,7 +40,7 @@ from tinybert_xai import (  # noqa: E402
 def main() -> None:
     cfg = Config()
     spec = DATASET_TWEETEVAL_SENTIMENT
-    cond = KD_LOGIT_HIDDEN
+    cond = CONDITIONS_BY_NAME[sys.argv[1] if len(sys.argv) > 1 else "kd_attn"]
 
     configure_reproducibility(cfg.seed)
     device = resolve_device(cfg)

@@ -9,6 +9,7 @@ from tinybert_xai.config import Config
 from tinybert_xai.conditions import (
     ALL_CONDITIONS,
     CE_ONLY,
+    CONDITIONS_BY_NAME,
     KD_ATTN,
     KD_FULL,
     KD_HIDDEN,
@@ -34,7 +35,7 @@ from tinybert_xai.eval import (
     compute_teacher_student_analysis,
     evaluate,
 )
-from tinybert_xai.losses import compute_student_losses, hidden_kd_loss, logit_kd_loss
+from tinybert_xai.losses import attention_kd_loss, compute_student_losses, hidden_kd_loss, logit_kd_loss
 from tinybert_xai.models import load_tokenizer, load_classifier
 from tinybert_xai.projections import HiddenProjection
 from tinybert_xai.runlog import (
@@ -104,6 +105,7 @@ __all__ = [
     "KD_HIDDEN_ATTN",
     "KD_FULL",
     "ALL_CONDITIONS",
+    "CONDITIONS_BY_NAME",
     # eval
     "EvaluationResult",
     "TeacherStudentAnalysis",
@@ -111,6 +113,7 @@ __all__ = [
     "compute_teacher_student_analysis",
     "evaluate",
     # models / losses
+    "attention_kd_loss",
     "compute_student_losses",
     "hidden_kd_loss",
     "logit_kd_loss",

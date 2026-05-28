@@ -37,3 +37,5 @@ ALL_CONDITIONS = (
     KD_HIDDEN_ATTN,
     KD_FULL,
 )
+
+CONDITIONS_BY_NAME = {condition.name: condition for condition in ALL_CONDITIONS}
