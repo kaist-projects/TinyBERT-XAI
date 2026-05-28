@@ -1,6 +1,6 @@
 import json
 
-from tinybert_xai.runlog import RunMetadata, write_run_metadata
+from tinybert_xai.runlog import RunMetadata, make_run_id, write_run_metadata
 
 
 def test_schema_v2_rounding_and_teacher_fields(tmp_path):
@@ -14,7 +14,6 @@ def test_schema_v2_rounding_and_teacher_fields(tmp_path):
         dataset={
             "name": "cardiffnlp/tweet_eval",
             "config": "sentiment",
-            "family": "sentiment",
             "num_labels": 3,
             "label_names": ["negative", "neutral", "positive"],
             "splits": {"train": 45615, "validation": 2000, "test": 12284},
@@ -51,7 +50,6 @@ def test_schema_v2_rounding_and_teacher_fields(tmp_path):
         reproducibility={
             "seed": 42,
             "deterministic_algorithms": True,
-            "warn_only": True,
             "cublas_workspace_config": ":4096:8",
             "shuffle_seed_scheme": "seed + epoch",
         },
@@ -60,15 +58,6 @@ def test_schema_v2_rounding_and_teacher_fields(tmp_path):
             "gpu_model": "NVIDIA GeForce RTX 3090",
             "gpu_memory_total_mb": 24118.25,
             "torch_cuda": "12.4",
-            "package_versions": {
-                "torch": "2.5.1+cu124",
-                "transformers": "4.49.0",
-                "datasets": "3.6.0",
-                "tokenizers": "0.21.4",
-                "numpy": "1.26.4",
-                "sklearn": "1.5.2",
-                "python": "3.12.13",
-            },
         },
         training={
             "epochs_completed": 1,
@@ -139,4 +128,123 @@ def test_schema_v2_rounding_and_teacher_fields(tmp_path):
     assert "git_commit" not in text
     assert "metric_definitions" not in text
     assert "cuda_available" not in text
+    assert "package_versions" not in text
+    assert "warn_only" not in text
+    assert "family" not in text
     assert "[215, 74, 23]" in text
+
+
+def test_student_schema_v2_uses_condition_and_active_losses(tmp_path):
+    meta = RunMetadata(
+        schema_version="2",
+        run={
+            "run_id": "student-ce_only-tweet_eval-sentiment-test",
+            "stage": "student",
+            "condition": "ce_only",
+        },
+        dataset={
+            "name": "cardiffnlp/tweet_eval",
+            "config": "sentiment",
+            "num_labels": 3,
+            "label_names": ["negative", "neutral", "positive"],
+            "splits": {"train": 45615, "validation": 2000},
+            "max_seq_length": 128,
+            "truncation": True,
+            "padding": "max_length",
+        },
+        model={
+            "student_checkpoint": "huawei-noah/TinyBERT_General_4L_312D",
+            "tokenizer": "bert-base-uncased",
+            "parameter_count": 14351235,
+        },
+        optimization={
+            "optimizer": "AdamW",
+            "learning_rate": 2e-5,
+            "weight_decay": 0.01,
+            "betas": [0.9, 0.999],
+            "eps": 1e-8,
+            "scheduler": None,
+            "grad_clip": None,
+            "precision": "bf16",
+            "train_batch_size": 16,
+            "eval_batch_size": 32,
+            "num_epochs": 3,
+        },
+        checkpoint_selection={
+            "monitor": "dev_macro_f1",
+            "mode": "max",
+            "patience": 2,
+            "best_epoch": 1,
+            "early_stopped": False,
+            "checkpoint": "checkpoints/students/tweet_eval-sentiment/ce_only/best.pt",
+        },
+        reproducibility={
+            "seed": 42,
+            "deterministic_algorithms": True,
+            "cublas_workspace_config": ":4096:8",
+            "shuffle_seed_scheme": "seed + epoch",
+        },
+        environment={
+            "device": "cuda:0",
+            "gpu_model": "NVIDIA GeForce RTX 3090",
+            "gpu_memory_total_mb": 24118.25,
+            "torch_cuda": "12.4",
+        },
+        training={
+            "epochs_completed": 1,
+            "best_dev_macro_f1": 0.5333333333333333,
+            "train_time_seconds": 201.123456789,
+            "history": [
+                {
+                    "epoch": 0,
+                    "global_step": 2851,
+                    "epoch_time_seconds": 64.22222222,
+                    "loss_total": 0.891234567,
+                    "losses": {"ce": 0.891234567},
+                    "grad_norm_mean": 3.4567891,
+                    "dev": {
+                        "macro_f1": 0.5333333333333333,
+                        "micro_f1": 0.612,
+                        "accuracy": 0.612,
+                        "ECE": 0.022222222,
+                        "NLL": 0.988888888,
+                        "Brier": 0.511111111,
+                    },
+                }
+            ],
+        },
+        metrics={
+            "test": {
+                "macro_f1": 0.544444444,
+                "micro_f1": 0.621,
+                "accuracy": 0.621,
+                "per_class_f1": [0.4, 0.61, 0.62],
+                "confusion_matrix": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                "ECE": 0.033333333,
+                "NLL": 0.977777777,
+                "Brier": 0.522222222,
+            }
+        },
+    )
+
+    path = tmp_path / "run_metadata.json"
+    write_run_metadata(meta, path)
+
+    text = path.read_text()
+    payload = json.loads(text)
+
+    assert payload["run"]["stage"] == "student"
+    assert payload["run"]["condition"] == "ce_only"
+    assert payload["model"]["student_checkpoint"] == "huawei-noah/TinyBERT_General_4L_312D"
+    assert "teacher_checkpoint" not in payload["model"]
+    assert payload["optimization"]["precision"] == "bf16"
+    assert payload["training"]["history"][0]["losses"] == {"ce": 0.89123}
+    assert payload["training"]["history"][0]["loss_total"] == 0.89123
+    assert "teacher_student_analysis" not in text
+    assert "raw_loss" not in text
+
+
+def test_student_run_id_includes_condition():
+    run_id = make_run_id("student", "tweet_eval-sentiment", "ce_only")
+
+    assert run_id.startswith("student-ce_only-tweet_eval-sentiment-")

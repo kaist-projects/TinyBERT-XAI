@@ -10,6 +10,7 @@ class Config:
     teacher_checkpoint: str = "bert-base-uncased"
     student_checkpoint: str = "huawei-noah/TinyBERT_General_4L_312D"
     tokenizer_checkpoint: str = "bert-base-uncased"
+    precision: str = "bf16"
     # ── iter-1: training hyperparameters ──
     learning_rate: float = 2e-5
     train_batch_size: int = 16

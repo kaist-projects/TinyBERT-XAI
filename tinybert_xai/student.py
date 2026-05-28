@@ -1,8 +1,4 @@
-"""Teacher training/evaluation pipeline contracts.
-
-The public functions in this module are medium-level contracts used by the
-scripts. Private helpers carry the lower-level tensor and metadata mechanics.
-"""
+"""Student training/evaluation pipeline contracts."""
 
 from __future__ import annotations
 
@@ -15,12 +11,13 @@ from typing import TYPE_CHECKING
 
 import torch
 from tqdm.auto import tqdm
-from transformers import set_seed as hf_set_seed
 
-from tinybert_xai.checkpoints import load_state_dict, results_dir, save_state_dict, teacher_dir
+from tinybert_xai.checkpoints import load_state_dict, results_dir, save_state_dict, student_dir
+from tinybert_xai.conditions import ConditionSpec
 from tinybert_xai.datasets import build_loader
 from tinybert_xai.earlystop import EarlyStopper
 from tinybert_xai.eval import EfficiencyMetrics, EvaluationResult, compute_efficiency, evaluate
+from tinybert_xai.losses import compute_student_losses
 from tinybert_xai.models import load_classifier, load_tokenizer
 from tinybert_xai.runlog import (
     RunMetadata,
@@ -41,7 +38,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class TeacherData:
+class StudentData:
     tokenizer: "PreTrainedTokenizerBase"
     train_loader: "DataLoader"
     dev_loader: "DataLoader"
@@ -50,23 +47,23 @@ class TeacherData:
 
 
 @dataclass(frozen=True)
-class TeacherModel:
+class StudentModel:
     model: "PreTrainedModel"
     optimizer: torch.optim.Optimizer
     parameter_count: int
 
 
 @dataclass(frozen=True)
-class TeacherEpochStats:
+class StudentEpochStats:
     loss_total_mean: float
-    loss_ce_mean: float
+    loss_means: dict[str, float]
     grad_norm_mean: float
     global_step: int
     epoch_time_seconds: float
 
 
 @dataclass
-class TeacherTrainingResult:
+class StudentTrainingResult:
     best_state: dict[str, torch.Tensor]
     best_epoch: int
     best_dev_macro_f1: float
@@ -77,7 +74,7 @@ class TeacherTrainingResult:
 
 
 @dataclass(frozen=True)
-class TeacherEvaluationResult:
+class StudentEvaluationResult:
     metadata_path: Path
     dev_size: int
     test_size: int
@@ -87,26 +84,26 @@ class TeacherEvaluationResult:
     efficiency: EfficiencyMetrics
 
 
-def configure_reproducibility(seed: int) -> None:
-    # Required for deterministic matmul on CUDA >= 10.2; cuBLAS reads it on
-    # first call, so set before any model forward.
-    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
-    hf_set_seed(seed)
-    torch.use_deterministic_algorithms(True, warn_only=True)
-
-
-def resolve_device(cfg: "Config") -> str:
-    return cfg.device or ("cuda" if torch.cuda.is_available() else "cpu")
-
-
-def start_teacher_metadata(cfg: "Config", spec: "DatasetSpec", device: str) -> RunMetadata:
+def start_student_metadata(
+    cfg: "Config",
+    spec: "DatasetSpec",
+    cond: ConditionSpec,
+    device: str,
+) -> RunMetadata:
     hardware = collect_hardware(device)
+    model = {
+        "student_checkpoint": cfg.student_checkpoint,
+        "tokenizer": cfg.tokenizer_checkpoint,
+    }
+    if cond.uses_teacher:
+        model["teacher_checkpoint"] = cfg.teacher_checkpoint
+
     return RunMetadata(
         schema_version="2",
         run={
-            "run_id": make_run_id("teacher", spec.name),
-            "stage": "teacher",
-            "condition": None,
+            "run_id": make_run_id("student", spec.name, cond.name),
+            "stage": "student",
+            "condition": cond.name,
         },
         dataset={
             "name": spec.hf_path,
@@ -118,10 +115,7 @@ def start_teacher_metadata(cfg: "Config", spec: "DatasetSpec", device: str) -> R
             "truncation": True,
             "padding": "max_length",
         },
-        model={
-            "checkpoint": cfg.teacher_checkpoint,
-            "tokenizer": cfg.tokenizer_checkpoint,
-        },
+        model=model,
         optimization={
             "optimizer": "AdamW",
             "learning_rate": cfg.learning_rate,
@@ -153,7 +147,7 @@ def start_teacher_metadata(cfg: "Config", spec: "DatasetSpec", device: str) -> R
     )
 
 
-def load_teacher_data(cfg: "Config", spec: "DatasetSpec") -> TeacherData:
+def load_student_data(cfg: "Config", spec: "DatasetSpec") -> StudentData:
     tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)
     train_loader = build_loader(
         spec,
@@ -171,7 +165,7 @@ def load_teacher_data(cfg: "Config", spec: "DatasetSpec") -> TeacherData:
         max_length=cfg.max_seq_length,
         batch_size=cfg.eval_batch_size,
     )
-    return TeacherData(
+    return StudentData(
         tokenizer=tokenizer,
         train_loader=train_loader,
         dev_loader=dev_loader,
@@ -180,35 +174,42 @@ def load_teacher_data(cfg: "Config", spec: "DatasetSpec") -> TeacherData:
     )
 
 
-def prepare_teacher_model(cfg: "Config", spec: "DatasetSpec", device: str) -> TeacherModel:
-    model = load_classifier(cfg.teacher_checkpoint, spec.num_labels, device)
+def prepare_student_model(cfg: "Config", spec: "DatasetSpec", device: str) -> StudentModel:
+    model = load_classifier(cfg.student_checkpoint, spec.num_labels, device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate)
-    return TeacherModel(model=model, optimizer=optimizer, parameter_count=count_params(model))
+    return StudentModel(model=model, optimizer=optimizer, parameter_count=count_params(model))
 
 
-def fine_tune_teacher(
+def fine_tune_student(
     cfg: "Config",
     spec: "DatasetSpec",
-    data: TeacherData,
-    teacher: TeacherModel,
+    cond: ConditionSpec,
+    data: StudentData,
+    student: StudentModel,
     *,
     device: str,
-) -> TeacherTrainingResult:
+    teacher_model: "PreTrainedModel | None" = None,
+) -> StudentTrainingResult:
+    if cond.uses_teacher and teacher_model is None:
+        raise RuntimeError(f"Condition {cond.name!r} requires a teacher model")
+
     stopper = EarlyStopper(patience=cfg.patience, mode="max")
     history: list[dict] = []
     best_state: dict[str, torch.Tensor] | None = None
     early_stopped = False
     global_step = 0
 
-    ckpt_dir = teacher_dir(spec.name)
+    ckpt_dir = student_dir(spec.name, cond.name)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     total_train_start = time.perf_counter()
 
     for epoch in range(cfg.num_epochs):
-        epoch_stats = train_teacher_epoch(
-            teacher.model,
+        epoch_stats = train_student_epoch(
+            student.model,
             data.train_loader,
-            teacher.optimizer,
+            student.optimizer,
+            cond,
+            teacher_model=teacher_model,
             device=device,
             seed=cfg.seed,
             epoch=epoch,
@@ -218,12 +219,12 @@ def fine_tune_teacher(
         global_step = epoch_stats.global_step
 
         dev_result = evaluate(
-            teacher.model,
+            student.model,
             data.dev_loader,
             device=device,
             num_classes=spec.num_labels,
         )
-        history.append(_teacher_epoch_entry(epoch_stats, dev_result, epoch))
+        history.append(_student_epoch_entry(epoch_stats, dev_result, epoch))
 
         print(
             f"  epoch {epoch}  "
@@ -233,11 +234,11 @@ def fine_tune_teacher(
             f"({epoch_stats.epoch_time_seconds:.1f}s)"
         )
 
-        save_state_dict(teacher.model, ckpt_dir / f"epoch_{epoch}.pt")
+        save_state_dict(student.model, ckpt_dir / f"epoch_{epoch}.pt")
 
         is_best, should_stop = stopper.update(dev_result.macro_f1, epoch)
         if is_best:
-            best_state = clone_state_dict_cpu(teacher.model)
+            best_state = clone_state_dict_cpu(student.model)
         if should_stop:
             early_stopped = True
             print(f"  Early stop triggered after epoch {epoch} (no improvement for {cfg.patience} epochs)")
@@ -246,7 +247,7 @@ def fine_tune_teacher(
     if best_state is None:
         raise RuntimeError("No valid epoch completed - check for NaN losses")
 
-    return TeacherTrainingResult(
+    return StudentTrainingResult(
         best_state=best_state,
         best_epoch=stopper.best_step,
         best_dev_macro_f1=stopper.best_value,
@@ -257,33 +258,44 @@ def fine_tune_teacher(
     )
 
 
-def train_teacher_epoch(
+def train_student_epoch(
     model: "PreTrainedModel",
     loader: "DataLoader",
     optimizer: torch.optim.Optimizer,
+    cond: ConditionSpec,
     *,
+    teacher_model: "PreTrainedModel | None",
     device: str,
     seed: int,
     epoch: int,
     global_step: int,
     precision: str,
-) -> TeacherEpochStats:
+) -> StudentEpochStats:
     epoch_start = time.perf_counter()
     model.train()
+    if teacher_model is not None:
+        teacher_model.eval()
 
     generator = getattr(loader, "generator", None)
     if generator is not None:
         generator.manual_seed(seed + epoch)
 
     loss_total_sum = 0.0
-    loss_ce_sum = 0.0
+    loss_sums: dict[str, float] = {}
     grad_norm_sum = 0.0
     n_batches = 0
 
     pbar = tqdm(loader, total=len(loader), desc=f"epoch {epoch}", unit="batch")
     for batch in pbar:
         batch = move_batch_to_device(batch, device)
-        loss = _teacher_batch_loss(model, batch, device=device, precision=precision)
+        loss, losses = _student_batch_losses(
+            model,
+            batch,
+            cond,
+            teacher_model=teacher_model,
+            device=device,
+            precision=precision,
+        )
 
         if not torch.isfinite(loss):
             pbar.write(
@@ -299,25 +311,27 @@ def train_teacher_epoch(
         optimizer.zero_grad()
 
         loss_total_sum += loss.item()
-        loss_ce_sum += loss.item()
+        for name, value in losses.items():
+            loss_sums[name] = loss_sums.get(name, 0.0) + value
         grad_norm_sum += grad_norm.item()
         n_batches += 1
         global_step += 1
         pbar.set_postfix(loss=f"{loss.item():.4f}")
 
-    return TeacherEpochStats(
+    return StudentEpochStats(
         loss_total_mean=loss_total_sum / max(n_batches, 1),
-        loss_ce_mean=loss_ce_sum / max(n_batches, 1),
+        loss_means={name: value / max(n_batches, 1) for name, value in loss_sums.items()},
         grad_norm_mean=grad_norm_sum / max(n_batches, 1),
         global_step=global_step,
         epoch_time_seconds=time.perf_counter() - epoch_start,
     )
 
 
-def save_teacher_training_result(
+def save_student_training_result(
     meta: RunMetadata,
-    result: TeacherTrainingResult,
+    result: StudentTrainingResult,
     spec: "DatasetSpec",
+    cond: ConditionSpec,
 ) -> tuple[Path, Path]:
     best_ckpt_path = result.checkpoint_dir / "best.pt"
     best_ckpt_path.parent.mkdir(parents=True, exist_ok=True)
@@ -333,23 +347,24 @@ def save_teacher_training_result(
         "history": result.history,
     }
 
-    metadata_path = results_dir("teacher", spec.name) / "run_metadata.json"
+    metadata_path = results_dir("student", spec.name, cond.name) / "run_metadata.json"
     write_run_metadata(meta, metadata_path)
     return best_ckpt_path, metadata_path
 
 
-def evaluate_saved_teacher(
+def evaluate_saved_student(
     cfg: "Config",
     spec: "DatasetSpec",
+    cond: ConditionSpec,
     *,
     device: str,
-) -> TeacherEvaluationResult:
-    ckpt_path = teacher_dir(spec.name) / "best.pt"
-    metadata_path = results_dir("teacher", spec.name) / "run_metadata.json"
-    _require_teacher_artifacts(ckpt_path, metadata_path)
+) -> StudentEvaluationResult:
+    ckpt_path = student_dir(spec.name, cond.name) / "best.pt"
+    metadata_path = results_dir("student", spec.name, cond.name) / "run_metadata.json"
+    _require_student_artifacts(ckpt_path, metadata_path, cond)
 
     tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)
-    model = load_classifier(cfg.teacher_checkpoint, spec.num_labels, device)
+    model = load_classifier(cfg.student_checkpoint, spec.num_labels, device)
     load_state_dict(model, ckpt_path, device)
 
     dev_loader = build_loader(
@@ -377,18 +392,18 @@ def evaluate_saved_teacher(
         batch_size=cfg.eval_batch_size,
     )
 
-    return TeacherEvaluationResult(
+    return StudentEvaluationResult(
         metadata_path=metadata_path,
         dev_size=len(dev_loader.dataset),
         test_size=len(test_loader.dataset),
         dev_result=dev_result,
         test_result=test_result,
-        test_metrics=_teacher_test_metrics(test_result),
+        test_metrics=_student_test_metrics(test_result),
         efficiency=efficiency,
     )
 
 
-def save_teacher_evaluation_result(result: TeacherEvaluationResult) -> None:
+def save_student_evaluation_result(result: StudentEvaluationResult) -> None:
     with open(result.metadata_path) as f:
         metadata = json.load(f)
 
@@ -404,22 +419,30 @@ def save_teacher_evaluation_result(result: TeacherEvaluationResult) -> None:
         f.write("\n")
 
 
-def _teacher_batch_loss(
+def _student_batch_losses(
     model: "PreTrainedModel",
     batch: dict[str, torch.Tensor],
+    cond: ConditionSpec,
     *,
+    teacher_model: "PreTrainedModel | None",
     device: str,
     precision: str,
-) -> torch.Tensor:
+) -> tuple[torch.Tensor, dict[str, float]]:
+    teacher_out = None
+    if cond.uses_teacher:
+        if teacher_model is None:
+            raise RuntimeError(f"Condition {cond.name!r} requires a teacher model")
+        teacher_batch = {k: v for k, v in batch.items() if k != "labels"}
+        with torch.no_grad(), training_autocast(device, precision):
+            teacher_out = teacher_model(**teacher_batch)
+
     with training_autocast(device, precision):
-        out = model(**batch)
-    if out.loss is None:
-        raise RuntimeError("Teacher batch must include labels so the model returns CE loss")
-    return out.loss
+        student_out = model(**batch)
+    return compute_student_losses(student_out, teacher_out, cond)
 
 
-def _teacher_epoch_entry(
-    stats: TeacherEpochStats,
+def _student_epoch_entry(
+    stats: StudentEpochStats,
     dev_result: EvaluationResult,
     epoch: int,
 ) -> dict:
@@ -429,7 +452,7 @@ def _teacher_epoch_entry(
             global_step=stats.global_step,
             epoch_time_seconds=stats.epoch_time_seconds,
             loss_total=stats.loss_total_mean,
-            losses={"ce": stats.loss_ce_mean},
+            losses=stats.loss_means,
             grad_norm_mean=stats.grad_norm_mean,
             dev={
                 "macro_f1": dev_result.macro_f1,
@@ -443,25 +466,30 @@ def _teacher_epoch_entry(
     )
 
 
-def _teacher_test_metrics(test_result: EvaluationResult) -> dict:
+def _student_test_metrics(test_result: EvaluationResult) -> dict:
     return asdict(test_result)
 
 
-def _require_teacher_artifacts(ckpt_path: Path, metadata_path: Path) -> None:
+def _require_student_artifacts(ckpt_path: Path, metadata_path: Path, cond: ConditionSpec) -> None:
     if not ckpt_path.exists():
         raise FileNotFoundError(
             f"Checkpoint not found: {ckpt_path}\n"
-            "Run scripts/01_train_teacher.py first."
+            "Run scripts/02_train_student.py first."
         )
     if not metadata_path.exists():
         raise FileNotFoundError(
             f"run_metadata.json not found: {metadata_path}\n"
-            "Run scripts/01_train_teacher.py first."
+            "Run scripts/02_train_student.py first."
         )
     with open(metadata_path) as f:
         metadata = json.load(f)
     if metadata.get("schema_version") != "2":
         raise RuntimeError(
             f"run_metadata.json is not schema v2: {metadata_path}\n"
-            "Run scripts/01_train_teacher.py to regenerate training metadata before evaluation."
+            "Run scripts/02_train_student.py to regenerate training metadata before evaluation."
+        )
+    if metadata.get("run", {}).get("condition") != cond.name:
+        raise RuntimeError(
+            f"run_metadata.json condition does not match {cond.name!r}: {metadata_path}\n"
+            "Run scripts/02_train_student.py for the requested condition."
         )

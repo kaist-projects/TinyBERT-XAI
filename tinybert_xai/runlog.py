@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
-import platform
 import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -47,27 +46,10 @@ class RunMetadata:
     efficiency: dict | None = None
 
 
-def make_run_id(stage: str, dataset_name: str) -> str:
+def make_run_id(stage: str, dataset_name: str, condition: str | None = None) -> str:
     ts = _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-    return f"{stage}-{dataset_name}-{ts}"
-
-
-def collect_package_versions() -> dict:
-    import datasets as hf_datasets
-    import numpy as np
-    import sklearn
-    import tokenizers
-    import transformers
-
-    return {
-        "torch": torch.__version__,
-        "transformers": transformers.__version__,
-        "datasets": hf_datasets.__version__,
-        "tokenizers": tokenizers.__version__,
-        "numpy": np.__version__,
-        "sklearn": sklearn.__version__,
-        "python": platform.python_version(),
-    }
+    condition_part = f"-{condition}" if condition is not None else ""
+    return f"{stage}{condition_part}-{dataset_name}-{ts}"
 
 
 def collect_hardware(device: str) -> dict:
