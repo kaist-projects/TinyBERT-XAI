@@ -12,7 +12,7 @@ Two non-negotiable constraints shape this plan:
 **Hardware:** RTX 3090/4090-class (24 GB). Comfortable budget.
 **Pilot dataset:** TweetEval-sentiment (`cardiffnlp/tweet_eval`, config `sentiment`).
 **Environment:** conda/mamba.
-**Layout:** `src/` + `configs/` + `scripts/`.
+**Layout:** root `tinybert_xai/` package + `configs/` + `scripts/`.
 
 The exploration of `reference/` (see Phase 1 findings) showed it is the original 2019/2020 TinyBERT authors' code, depends on a custom pre-modern-HF `transformer/` module, uses pre-softmax attention, a single shared projection, and a sequential phase split — **all of which disagree with our design doc**. We will **not** port `reference/`. We will **lift loss-computation patterns** from `reference/task_distill.py` (`soft_cross_entropy`, MSE-with-mask) and reimplement on modern HuggingFace `transformers`.
 
@@ -26,7 +26,7 @@ The full project context lives in `docs/notes/02-project-synthesis.md` and `CLAU
 |---|---|---|
 | Model framework | HuggingFace `transformers` 4.40+ | Modern, has `output_hidden_states` / `output_attentions` built-in. The `reference/transformer/` module is obsolete. |
 | Trainer | **Custom PyTorch training loop**, not `HF Trainer` | We need fine-grained control over 4 loss terms with per-condition toggles. Trainer's `compute_loss` override gets ugly for 8 conditions. |
-| Config format | YAML per dataset + YAML per condition; `dataclass` schema in `src/config.py` | One config file per run; sweep driver iterates. |
+| Config format | YAML per dataset + YAML per condition; `dataclass` schema in `tinybert_xai/config.py` | One config file per run; sweep driver iterates. |
 | Logging | Plain JSON per run (`run_metadata.json`) + Weights & Biases optional | Design doc §6 dictates JSON fields; W&B nice-to-have. |
 | Seed / reproducibility | `seed=42` everywhere, `torch.use_deterministic_algorithms(True)` where possible | Design doc §9 forbids seed variation. |
 | Mixed precision | `torch.cuda.amp.autocast(bfloat16)` | RTX 3090+ has bf16. Halves activation memory. |
@@ -56,8 +56,8 @@ Each iteration gets its own detailed sub-plan **at the time we start it**, not n
 **Goal:** A working conda environment that can load all three pieces (teacher, student, dataset) on the GPU.
 
 **Deliverable:**
-- `environment.yml` (conda)
-- `src/` skeleton: `models.py`, `data.py`, `config.py`, `utils.py`
+- `requirements.txt` (pip dependencies for a Python 3.12 conda env)
+- `tinybert_xai/` package skeleton: `models.py`, `datasets.py`, `config.py`, `utils.py`
 - `scripts/00_smoke_test.py` — loads `bert-base-uncased`, `huawei-noah/TinyBERT_General_4L_312D`, and one batch of TweetEval-sentiment; runs one forward pass through each on GPU; prints shapes.
 
 **Concept learned:**

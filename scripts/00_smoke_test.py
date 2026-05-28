@@ -1,7 +1,19 @@
-"""Iteration 0 smoke test — explicit wiring proves DI/SRP layout works on GPU."""
+"""Iteration 0 smoke test — explicit wiring proves DI/SRP layout works on GPU.
+
+Usage
+-----
+    conda activate tinybert-xai
+    # from repo root
+    python scripts/00_smoke_test.py
+"""
+import pathlib
+import sys
+
 import torch
 
-from tinybert_xai import (
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+from tinybert_xai import (  # noqa: E402
     Config,
     DATASET_TWEETEVAL_SENTIMENT,
     KDOutputs,

@@ -1,18 +1,14 @@
 import os
-import random
 
-import numpy as np
 import torch
+from transformers import set_seed as _hf_set_seed
 
 
 def set_seed(seed: int) -> None:
     # Required for deterministic matmul on CUDA >= 10.2; cuBLAS reads it on
     # first call, so set before any model forward.
     os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    _hf_set_seed(seed)
 
 
 def get_device() -> str:
@@ -24,4 +20,4 @@ def count_params(model: torch.nn.Module) -> int:
 
 
 def clone_state_dict_cpu(model: torch.nn.Module) -> dict:
-    return {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+    return {k: v.cpu().clone() for k, v in model.state_dict().items()}

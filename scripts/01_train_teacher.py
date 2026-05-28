@@ -7,6 +7,7 @@ epoch plus best.pt, and writes results/teachers/tweet_eval-sentiment/run_metadat
 Usage
 -----
     conda activate tinybert-xai
+    # from repo root
     python scripts/01_train_teacher.py
 
 Output
@@ -19,13 +20,17 @@ Output
 
 from __future__ import annotations
 
+import pathlib
+import sys
 import time
 from dataclasses import asdict
 
 import torch
 from tqdm.auto import tqdm
 
-from tinybert_xai import (
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+from tinybert_xai import (  # noqa: E402
     DATASET_TWEETEVAL_SENTIMENT,
     Config,
     EarlyStopper,

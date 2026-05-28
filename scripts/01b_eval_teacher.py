@@ -9,6 +9,7 @@ Run AFTER 01_train_teacher.py has completed.
 Usage
 -----
     conda activate tinybert-xai
+    # from repo root
     python scripts/01b_eval_teacher.py
 
 Writes
@@ -19,11 +20,15 @@ Writes
 from __future__ import annotations
 
 import json
+import pathlib
+import sys
 from dataclasses import asdict
 
 import torch
 
-from tinybert_xai import (
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+from tinybert_xai import (  # noqa: E402
     DATASET_TWEETEVAL_SENTIMENT,
     Config,
     build_loader,
