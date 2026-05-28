@@ -31,7 +31,6 @@ from tinybert_xai.eval import (
     EvaluationResult,
     evaluate,
 )
-from tinybert_xai.kdpair import KDPair, KDOutputs
 from tinybert_xai.losses import compute_student_losses
 from tinybert_xai.models import load_tokenizer, load_classifier
 from tinybert_xai.runlog import (
@@ -104,9 +103,7 @@ __all__ = [
     # eval
     "EvaluationResult",
     "evaluate",
-    # models / kdpair
-    "KDPair",
-    "KDOutputs",
+    # models / losses
     "compute_student_losses",
     "load_tokenizer",
     "load_classifier",
