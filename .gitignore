@@ -114,6 +114,7 @@ spiece.model
 # Note: keep README.md or config-like text artifacts.
 
 # ─── Project: run outputs (per design doc §6) ──────────────────────────────
+docs/notes/
 results/
 run_metadata.json
 run_metadata/
