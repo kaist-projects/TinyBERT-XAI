@@ -61,7 +61,8 @@ def hidden_kd_loss(
         projected = projections(projection_idx, student_state)
         mask = attention_mask.to(device=projected.device, dtype=projected.dtype).unsqueeze(-1)
         hidden_dim = projected.shape[-1]
-        denominator = (mask.sum() * hidden_dim).clamp_min(1.0)
+        # Count valid tokens from the integer mask so the divisor is exact regardless of tensor dtype.
+        denominator = (attention_mask.sum() * hidden_dim).clamp_min(1)
         layer_losses.append((mask * (projected - teacher_state).pow(2)).sum() / denominator)
 
     return torch.stack(layer_losses).mean()
@@ -83,6 +84,7 @@ def attention_kd_loss(
         raise RuntimeError("Attention KD requires attention_mask for token-pair masking")
 
     pair_mask = _valid_token_pair_mask(attention_mask)
+    valid_pairs = pair_mask.sum()  # exact integer count, independent of tensor dtype
     layer_losses = []
     for student_layer_idx, teacher_layer_idx in enumerate(layer_map):
         student_layer_attn = student_attn[student_layer_idx]
@@ -92,15 +94,9 @@ def attention_kd_loss(
             student_layer_attn = student_layer_attn.mean(dim=1, keepdim=True)
             teacher_layer_attn = teacher_layer_attn.mean(dim=1, keepdim=True)
 
-        if student_layer_attn.shape != teacher_layer_attn.shape:
-            raise RuntimeError(
-                "Student attention shape does not match teacher attention shape: "
-                f"{tuple(student_layer_attn.shape)} != {tuple(teacher_layer_attn.shape)}"
-            )
-
         mask = pair_mask.to(device=student_layer_attn.device, dtype=student_layer_attn.dtype).unsqueeze(1)
         num_heads = student_layer_attn.shape[1]
-        denominator = (mask.sum() * num_heads).clamp_min(1.0)
+        denominator = (valid_pairs * num_heads).clamp_min(1)
         layer_losses.append((mask * (student_layer_attn - teacher_layer_attn).pow(2)).sum() / denominator)
 
     return torch.stack(layer_losses).mean()
@@ -125,8 +121,6 @@ def compute_student_losses(
     if cond.hidden:
         if projections is None:
             raise RuntimeError(f"Condition {cond.name!r} requires hidden projections")
-        if student_out.hidden_states is None or teacher_out.hidden_states is None:
-            raise RuntimeError(f"Condition {cond.name!r} requires hidden states")
         losses["hidden"] = hidden_kd_loss(
             student_out.hidden_states,
             teacher_out.hidden_states,
@@ -134,8 +128,6 @@ def compute_student_losses(
             attention_mask,
         )
     if cond.attention:
-        if student_out.attentions is None or teacher_out.attentions is None:
-            raise RuntimeError(f"Condition {cond.name!r} requires attentions")
         losses["attention"] = attention_kd_loss(
             student_out.attentions,
             teacher_out.attentions,
