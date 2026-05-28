@@ -22,34 +22,19 @@ from __future__ import annotations
 
 import pathlib
 import sys
-import time
-from dataclasses import asdict
-
-import torch
-from tqdm.auto import tqdm
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from tinybert_xai import (  # noqa: E402
     DATASET_TWEETEVAL_SENTIMENT,
     Config,
-    EarlyStopper,
-    RunMetadata,
-    TrainEpochEntry,
-    build_loader,
-    clone_state_dict_cpu,
-    collect_hardware,
-    collect_package_versions,
-    evaluate,
-    get_device,
-    load_classifier,
-    load_tokenizer,
-    make_run_id,
-    results_dir,
-    save_state_dict,
-    set_seed,
-    teacher_dir,
-    write_run_metadata,
+    configure_reproducibility,
+    fine_tune_teacher,
+    load_teacher_data,
+    prepare_teacher_model,
+    resolve_device,
+    save_teacher_training_result,
+    start_teacher_metadata,
 )
 
 
@@ -57,182 +42,23 @@ def main() -> None:
     cfg = Config()
     spec = DATASET_TWEETEVAL_SENTIMENT
 
-    set_seed(cfg.seed)
-    torch.use_deterministic_algorithms(True, warn_only=True)
-
-    device = cfg.device or get_device()
+    configure_reproducibility(cfg.seed)
+    device = resolve_device(cfg)
     print(f"Device: {device}")
 
-    # ── run metadata skeleton ────────────────────────────────────────────────
-    meta = RunMetadata(
-        run_id=make_run_id("teacher", spec.name),
-        stage="teacher",
-        dataset=f"{spec.hf_path}:{spec.hf_config}",
-        dataset_family="sentiment",
-        condition=None,
-        seed=cfg.seed,
-        config=asdict(cfg),
-        package_versions=collect_package_versions(),
-        hardware=collect_hardware(device),
-    )
+    meta = start_teacher_metadata(cfg, spec, device)
 
-    # ── load data ────────────────────────────────────────────────────────────
     print("Loading datasets …")
-    tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)
-    train_loader = build_loader(
-        spec, "train", tokenizer,
-        max_length=cfg.max_seq_length,
-        batch_size=cfg.train_batch_size,
-        shuffle=True, seed=cfg.seed,
-    )
-    dev_loader = build_loader(
-        spec, "validation", tokenizer,
-        max_length=cfg.max_seq_length,
-        batch_size=cfg.eval_batch_size,
-    )
-    n_train = len(train_loader.dataset)
-    n_dev   = len(dev_loader.dataset)
-    meta.splits = {"train": n_train, "validation": n_dev}
-    print(f"  train={n_train}  dev={n_dev}")
+    data = load_teacher_data(cfg, spec)
+    meta.splits = {"train": data.train_size, "validation": data.dev_size}
+    print(f"  train={data.train_size}  dev={data.dev_size}")
 
-    # ── load model ───────────────────────────────────────────────────────────
-    model = load_classifier(cfg.teacher_checkpoint, spec.num_labels, device)
-    model.train()
+    teacher = prepare_teacher_model(cfg, spec, device)
+    result = fine_tune_teacher(cfg, spec, data, teacher, device=device)
+    best_ckpt_path, metadata_path = save_teacher_training_result(meta, result, spec)
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate)
-
-    # ── training loop ────────────────────────────────────────────────────────
-    stopper = EarlyStopper(patience=cfg.patience, mode="max")
-    best_state: dict | None = None
-    history: list[dict] = []
-    early_stopped = False
-    global_step = 0
-
-    ckpt_dir = teacher_dir(spec.name)
-    ckpt_dir.mkdir(parents=True, exist_ok=True)
-
-    total_train_start = time.perf_counter()
-
-    for epoch in range(cfg.num_epochs):
-        epoch_start = time.perf_counter()
-        model.train()
-
-        # Deterministic per-epoch reshuffle.
-        train_loader.generator.manual_seed(cfg.seed + epoch)
-
-        loss_total_sum = 0.0
-        loss_ce_sum    = 0.0
-        grad_norm_sum  = 0.0
-        n_batches      = 0
-
-        pbar = tqdm(
-            train_loader,
-            total=len(train_loader),
-            desc=f"epoch {epoch}",
-            unit="batch",
-        )
-        for batch in pbar:
-            batch = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
-
-            out = model(**batch)   # AutoModelForSequenceClassification: loss = CE when labels present
-            loss = out.loss
-
-            if not torch.isfinite(loss):
-                pbar.write(f"  [WARN] non-finite loss at epoch {epoch} step {global_step}: {loss.item():.6f} — skipping batch")
-                optimizer.zero_grad()
-                continue
-
-            loss.backward()
-            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float("inf"))
-            optimizer.step()
-            optimizer.zero_grad()
-
-            loss_total_sum += loss.item()
-            loss_ce_sum    += loss.item()
-            grad_norm_sum  += grad_norm.item()
-            n_batches      += 1
-            global_step    += 1
-            pbar.set_postfix(loss=f"{loss.item():.4f}")
-
-        epoch_time = time.perf_counter() - epoch_start
-
-        avg_loss_total = loss_total_sum / max(n_batches, 1)
-        avg_loss_ce    = loss_ce_sum    / max(n_batches, 1)
-        avg_grad_norm  = grad_norm_sum  / max(n_batches, 1)
-
-        # ── dev eval ─────────────────────────────────────────────────────
-        dev_result = evaluate(
-            model, dev_loader,
-            device=device,
-            num_classes=spec.num_labels,
-        )
-
-        entry = TrainEpochEntry(
-            epoch=epoch,
-            train_loss_total=avg_loss_total,
-            train_loss_ce=avg_loss_ce,
-            train_raw_loss_ce=avg_loss_ce,
-            train_loss_logit=None,
-            train_raw_loss_logit=None,
-            train_loss_hidden=None,
-            train_raw_loss_hidden=None,
-            train_loss_attention=None,
-            train_raw_loss_attention=None,
-            grad_norm_mean=avg_grad_norm,
-            learning_rate=cfg.learning_rate,
-            global_step=global_step,
-            epoch_time_seconds=epoch_time,
-            dev_macro_f1=dev_result.macro_f1,
-            dev_micro_f1=dev_result.micro_f1,
-            dev_accuracy=dev_result.accuracy,
-            dev_ECE=dev_result.ECE,
-            dev_NLL=dev_result.NLL,
-            dev_Brier=dev_result.Brier,
-        )
-        history.append(asdict(entry))
-
-        print(
-            f"  epoch {epoch}  "
-            f"train_loss={avg_loss_total:.4f}  "
-            f"dev_macro_f1={dev_result.macro_f1:.4f}  "
-            f"dev_acc={dev_result.accuracy:.4f}  "
-            f"({epoch_time:.1f}s)"
-        )
-
-        save_state_dict(model, ckpt_dir / f"epoch_{epoch}.pt")
-
-        is_best, should_stop = stopper.update(dev_result.macro_f1, epoch)
-        if is_best:
-            best_state = clone_state_dict_cpu(model)
-        if should_stop:
-            early_stopped = True
-            print(f"  Early stop triggered after epoch {epoch} (no improvement for {cfg.patience} epochs)")
-            break
-
-    total_train_time = time.perf_counter() - total_train_start
-
-    # ── save best checkpoint ─────────────────────────────────────────────────
-    if best_state is None:
-        raise RuntimeError("No valid epoch completed — check for NaN losses")
-    best_ckpt_path = ckpt_dir / "best.pt"
-    best_ckpt_path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(best_state, best_ckpt_path)
-    print(f"\nBest checkpoint: epoch {stopper.best_step}, dev macro-F1={stopper.best_value:.4f}")
+    print(f"\nBest checkpoint: epoch {result.best_epoch}, dev macro-F1={result.best_dev_macro_f1:.4f}")
     print(f"Saved to: {best_ckpt_path}")
-
-    # ── finalise metadata (training section) ─────────────────────────────────
-    meta.training = {
-        "epochs_completed": len(history),
-        "best_epoch": stopper.best_step,
-        "best_dev_macro_f1": stopper.best_value,
-        "train_time_seconds": total_train_time,
-        "early_stopped": early_stopped,
-        "history": history,
-    }
-    # dev_metrics / test_metrics / efficiency filled by 01b_eval_teacher.py
-
-    metadata_path = results_dir("teacher", spec.name) / "run_metadata.json"
-    write_run_metadata(meta, metadata_path)
     print(f"Metadata written to: {metadata_path}")
 
     print("\n[OK] Teacher training complete.")

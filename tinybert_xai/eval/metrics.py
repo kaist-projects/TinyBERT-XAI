@@ -9,6 +9,8 @@ import numpy as np
 import sklearn.metrics as skm
 import torch
 
+from tinybert_xai.utils import move_batch_to_device
+
 if TYPE_CHECKING:
     from torch.utils.data import DataLoader
     from transformers import PreTrainedModel
@@ -54,7 +56,7 @@ def _run_inference(
     chunks_preds, chunks_labels, chunks_probs = [], [], []
     with torch.no_grad():
         for batch in loader:
-            batch = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
+            batch = move_batch_to_device(batch, device)
             labels = batch.pop("labels")
             logits = model(**batch).logits
             chunks_probs.append(torch.softmax(logits, dim=-1).cpu().numpy())

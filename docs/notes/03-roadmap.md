@@ -29,6 +29,7 @@ The full project context lives in `docs/notes/02-project-synthesis.md` and `CLAU
 | Config format | YAML per dataset + YAML per condition; `dataclass` schema in `tinybert_xai/config.py` | One config file per run; sweep driver iterates. |
 | Logging | Plain JSON per run (`run_metadata.json`) + Weights & Biases optional | Design doc §6 dictates JSON fields; W&B nice-to-have. |
 | Seed / reproducibility | `seed=42` everywhere, `torch.use_deterministic_algorithms(True)` where possible | Design doc §9 forbids seed variation. |
+| Pipeline layering | Scripts orchestrate; `tinybert_xai/teacher.py` owns teacher pipeline contracts; low-level tensor/file helpers stay separate | Keeps abstraction levels consistent and gives iter-2 student KD a pattern without forcing it into the teacher loop. |
 | Mixed precision | `torch.cuda.amp.autocast(bfloat16)` | RTX 3090+ has bf16. Halves activation memory. |
 | Layer mapping | Hard-coded `[3, 6, 9, 12]` for teacher per student layer `[1..4]` | Design doc §4. |
 | Hidden projection | **4 separate** trainable `nn.Linear(312, 768)` — one per mapped layer | Design doc §6. Differs from reference (`reference/transformer/modeling.py:1126` has one shared). |
@@ -76,10 +77,12 @@ Each iteration gets its own detailed sub-plan **at the time we start it**, not n
 **Goal:** A frozen, dataset-specific teacher checkpoint for TweetEval-sentiment, plus a working evaluation pipeline.
 
 **Deliverable:**
-- `src/train_teacher.py` (or `scripts/01_train_teacher.py`).
-- `src/eval.py` with `macro_f1`, `micro_f1`, `accuracy`, `per_class_f1`, `confusion_matrix` — the design doc §7 primary + secondary metrics.
+- `scripts/01_train_teacher.py` — high-level teacher training orchestration.
+- `scripts/01b_eval_teacher.py` — high-level saved-teacher evaluation orchestration.
+- `tinybert_xai/teacher.py` — teacher pipeline contracts for data, model prep, epoch training, fine-tuning, evaluation, and artifact saving.
+- `tinybert_xai/eval/` with `macro_f1`, `micro_f1`, `accuracy`, `per_class_f1`, `confusion_matrix` — the design doc §7 primary + secondary metrics.
 - `checkpoints/teachers/tweet_eval-sentiment/` containing the frozen teacher.
-- `results/teachers/tweet_eval-sentiment/metrics.json`.
+- `results/teachers/tweet_eval-sentiment/run_metadata.json`.
 
 **Concept learned:**
 - **Plain task fine-tuning** — what BERT does without any distillation. This is the *target* the student will try to approximate.

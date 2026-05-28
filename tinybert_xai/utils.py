@@ -1,4 +1,5 @@
 import os
+from collections.abc import Mapping
 
 import torch
 from transformers import set_seed as _hf_set_seed
@@ -17,6 +18,13 @@ def get_device() -> str:
 
 def count_params(model: torch.nn.Module) -> int:
     return sum(p.numel() for p in model.parameters())
+
+
+def move_batch_to_device(
+    batch: Mapping[str, torch.Tensor],
+    device: str,
+) -> dict[str, torch.Tensor]:
+    return {k: v.to(device, non_blocking=True) for k, v in batch.items()}
 
 
 def clone_state_dict_cpu(model: torch.nn.Module) -> dict:

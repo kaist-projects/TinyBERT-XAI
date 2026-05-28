@@ -31,10 +31,28 @@ from tinybert_xai.runlog import (
     make_run_id,
     write_run_metadata,
 )
+from tinybert_xai.teacher import (
+    TeacherData,
+    TeacherEvaluationResult,
+    TeacherEpochStats,
+    TeacherModel,
+    TeacherTrainingResult,
+    configure_reproducibility,
+    evaluate_saved_teacher,
+    fine_tune_teacher,
+    load_teacher_data,
+    prepare_teacher_model,
+    resolve_device,
+    save_teacher_evaluation_result,
+    save_teacher_training_result,
+    start_teacher_metadata,
+    train_teacher_epoch,
+)
 from tinybert_xai.utils import (
     clone_state_dict_cpu,
     count_params,
     get_device,
+    move_batch_to_device,
     set_seed,
 )
 
@@ -65,6 +83,22 @@ __all__ = [
     "collect_package_versions",
     "collect_hardware",
     "write_run_metadata",
+    # teacher pipeline
+    "TeacherData",
+    "TeacherEvaluationResult",
+    "TeacherEpochStats",
+    "TeacherModel",
+    "TeacherTrainingResult",
+    "configure_reproducibility",
+    "evaluate_saved_teacher",
+    "fine_tune_teacher",
+    "load_teacher_data",
+    "prepare_teacher_model",
+    "resolve_device",
+    "save_teacher_evaluation_result",
+    "save_teacher_training_result",
+    "start_teacher_metadata",
+    "train_teacher_epoch",
     # checkpoints
     "teacher_dir",
     "student_dir",
@@ -77,5 +111,6 @@ __all__ = [
     "set_seed",
     "get_device",
     "count_params",
+    "move_batch_to_device",
     "clone_state_dict_cpu",
 ]
