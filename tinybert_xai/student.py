@@ -16,7 +16,13 @@ from tinybert_xai.checkpoints import load_state_dict, results_dir, save_state_di
 from tinybert_xai.conditions import ConditionSpec
 from tinybert_xai.datasets import build_loader
 from tinybert_xai.earlystop import EarlyStopper
-from tinybert_xai.eval import EvaluationResult, evaluate
+from tinybert_xai.eval import (
+    EvaluationResult,
+    TeacherStudentAnalysis,
+    collect_probabilities,
+    compute_teacher_student_analysis,
+    evaluate,
+)
 from tinybert_xai.losses import compute_student_losses
 from tinybert_xai.models import load_classifier, load_tokenizer
 from tinybert_xai.runlog import (
@@ -80,6 +86,7 @@ class StudentEvaluationResult:
     dev_result: EvaluationResult
     test_result: EvaluationResult
     test_metrics: dict
+    teacher_student_analysis: TeacherStudentAnalysis | None = None
 
 
 def start_student_metadata(
@@ -354,6 +361,7 @@ def evaluate_saved_student(
     cond: ConditionSpec,
     *,
     device: str,
+    teacher_model: "PreTrainedModel | None" = None,
 ) -> StudentEvaluationResult:
     ckpt_path = student_dir(spec.name, cond.name) / "best.pt"
     metadata_path = results_dir("student", spec.name, cond.name) / "run_metadata.json"
@@ -380,6 +388,13 @@ def evaluate_saved_student(
 
     dev_result = evaluate(model, dev_loader, device=device, num_classes=spec.num_labels)
     test_result = evaluate(model, test_loader, device=device, num_classes=spec.num_labels)
+    teacher_student_analysis = None
+    if teacher_model is not None:
+        teacher_probs, labels = collect_probabilities(teacher_model, test_loader, device=device)
+        student_probs, student_labels = collect_probabilities(model, test_loader, device=device)
+        if not torch.equal(labels, student_labels):
+            raise RuntimeError("Teacher and student evaluation labels did not align")
+        teacher_student_analysis = compute_teacher_student_analysis(teacher_probs, student_probs, labels)
 
     return StudentEvaluationResult(
         metadata_path=metadata_path,
@@ -388,6 +403,7 @@ def evaluate_saved_student(
         dev_result=dev_result,
         test_result=test_result,
         test_metrics=_student_test_metrics(test_result),
+        teacher_student_analysis=teacher_student_analysis,
     )
 
 
@@ -396,9 +412,13 @@ def save_student_evaluation_result(result: StudentEvaluationResult) -> None:
         metadata = json.load(f)
 
     metadata["dataset"]["splits"]["test"] = result.test_size
+    test_metrics = dict(result.test_metrics)
+    if result.teacher_student_analysis is not None:
+        test_metrics["teacher_student_analysis"] = asdict(result.teacher_student_analysis)
+
     metadata["metrics"] = {
         "dev": asdict(result.dev_result),
-        "test": result.test_metrics,
+        "test": test_metrics,
     }
 
     with open(result.metadata_path, "w") as f:
