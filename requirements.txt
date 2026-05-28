@@ -1,0 +1,36 @@
+# conda create -n tinybert-xai python=3.12
+# conda activate tinybert-xai
+# pip install -r requirements.txt
+
+# PyTorch + bundled CUDA 12.4 runtime
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.5.*
+
+# HuggingFace stack (upper-bounded to prevent silent API drift)
+transformers>=4.46,<4.50
+datasets>=3.0,<4.0
+tokenizers>=0.20,<0.22
+accelerate>=1.0,<2.0
+evaluate>=0.4,<0.5
+
+# Scientific stack (numpy<2 for HF compatibility headroom)
+numpy<2.0
+scipy>=1.11,<1.14
+scikit-learn>=1.3,<1.6
+pandas>=2.0,<2.3
+
+# Visualization
+matplotlib>=3.7,<3.10
+seaborn>=0.13,<0.14
+
+# Utilities
+pyyaml
+tqdm
+rich
+
+# Optional experiment tracking
+wandb
+
+# Dev tooling
+pytest
+ruff
