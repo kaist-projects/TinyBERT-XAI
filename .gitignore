@@ -113,9 +113,8 @@ hf_cache/
 spiece.model
 # Note: keep README.md or config-like text artifacts.
 
-# ─── Project: run outputs (per design doc §6) ──────────────────────────────
-results/
-run_metadata.json
+# ─── Project: run outputs ──────────────────────────────────────────────────
+/run_metadata.json
 run_metadata/
 attention_heatmaps/
 predictions/

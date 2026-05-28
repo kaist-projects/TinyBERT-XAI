@@ -1,0 +1,174 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "teacher-tweet_eval-sentiment-2026-05-28T10:17:15Z",
+    "stage": "teacher",
+    "condition": null
+  },
+  "dataset": {
+    "name": "cardiffnlp/tweet_eval",
+    "config": "sentiment",
+    "family": "sentiment",
+    "num_labels": 3,
+    "label_names": [
+      "negative",
+      "neutral",
+      "positive"
+    ],
+    "splits": {
+      "train": 45615,
+      "validation": 2000,
+      "test": 12284
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "checkpoint": "bert-base-uncased",
+    "tokenizer": "bert-base-uncased",
+    "parameter_count": 109484547
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 1,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/teachers/tweet_eval-sentiment/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "warn_only": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24118.25,
+    "torch_cuda": "12.4",
+    "package_versions": {
+      "torch": "2.5.1+cu124",
+      "transformers": "4.49.0",
+      "datasets": "3.6.0",
+      "tokenizers": "0.21.4",
+      "numpy": "1.26.4",
+      "sklearn": "1.5.2",
+      "python": "3.12.13"
+    }
+  },
+  "training": {
+    "epochs_completed": 3,
+    "best_dev_macro_f1": 0.71552,
+    "train_time_seconds": 694.49996,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 2851,
+        "epoch_time_seconds": 241.7026,
+        "loss_total": 0.65471,
+        "losses": {
+          "ce": 0.65471
+        },
+        "grad_norm_mean": 6.64213,
+        "dev": {
+          "macro_f1": 0.70313,
+          "micro_f1": 0.7195,
+          "accuracy": 0.7195,
+          "ECE": 0.01662,
+          "NLL": 0.61894,
+          "Brier": 0.37457
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 5702,
+        "epoch_time_seconds": 212.12472,
+        "loss_total": 0.47283,
+        "losses": {
+          "ce": 0.47283
+        },
+        "grad_norm_mean": 7.87917,
+        "dev": {
+          "macro_f1": 0.71552,
+          "micro_f1": 0.7335,
+          "accuracy": 0.7335,
+          "ECE": 0.06905,
+          "NLL": 0.62806,
+          "Brier": 0.36908
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 8553,
+        "epoch_time_seconds": 228.62007,
+        "loss_total": 0.28951,
+        "losses": {
+          "ce": 0.28951
+        },
+        "grad_norm_mean": 10.10778,
+        "dev": {
+          "macro_f1": 0.70824,
+          "micro_f1": 0.7255,
+          "accuracy": 0.7255,
+          "ECE": 0.15005,
+          "NLL": 0.8056,
+          "Brier": 0.42174
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.71552,
+      "micro_f1": 0.7335,
+      "accuracy": 0.7335,
+      "per_class_f1": [0.65038, 0.69802, 0.79815],
+      "confusion_matrix": [
+        [213, 77, 22],
+        [107, 564, 198],
+        [23, 106, 690]
+      ],
+      "ECE": 0.06905,
+      "NLL": 0.62806,
+      "Brier": 0.36908
+    },
+    "test": {
+      "macro_f1": 0.68698,
+      "micro_f1": 0.68748,
+      "accuracy": 0.68748,
+      "per_class_f1": [0.72214, 0.6704, 0.66841],
+      "confusion_matrix": [
+        [3003, 793, 176],
+        [1271, 3653, 1013],
+        [71, 515, 1789]
+      ],
+      "ECE": 0.09192,
+      "NLL": 0.70767,
+      "Brier": 0.43086
+    }
+  },
+  "efficiency": {
+    "latency_p50_ms": 50.33626,
+    "latency_p95_ms": 50.59717,
+    "throughput_samples_per_sec": 635.32942,
+    "model_size_mb": 417.72769,
+    "parameter_count": 109484547,
+    "gpu_memory_mb": 990.81689
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "student-kd_logit-tweet_eval-sentiment-2026-05-28T13:40:33Z",
+    "stage": "student",
+    "condition": "kd_logit"
+  },
+  "dataset": {
+    "name": "cardiffnlp/tweet_eval",
+    "config": "sentiment",
+    "num_labels": 3,
+    "label_names": [
+      "negative",
+      "neutral",
+      "positive"
+    ],
+    "splits": {
+      "train": 45615,
+      "validation": 2000,
+      "test": 12284
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "student_checkpoint": "huawei-noah/TinyBERT_General_4L_312D",
+    "tokenizer": "bert-base-uncased",
+    "teacher_checkpoint": "bert-base-uncased",
+    "parameter_count": 14351187
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 1,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/students/tweet_eval-sentiment/kd_logit/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24118.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 483.76087,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 2851,
+        "epoch_time_seconds": 151.55609,
+        "loss_total": 1.0274,
+        "losses": {
+          "ce": 0.71285,
+          "logit": 0.31455
+        },
+        "grad_norm_mean": 15.78318,
+        "dev": {
+          "macro_f1": 0.6661,
+          "micro_f1": 0.684,
+          "accuracy": 0.684,
+          "ECE": 0.05392,
+          "NLL": 0.69079,
+          "Brier": 0.41756
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 5702,
+        "epoch_time_seconds": 161.24989,
+        "loss_total": 0.83408,
+        "losses": {
+          "ce": 0.60673,
+          "logit": 0.22734
+        },
+        "grad_norm_mean": 17.67587,
+        "dev": {
+          "macro_f1": 0.67993,
+          "micro_f1": 0.706,
+          "accuracy": 0.706,
+          "ECE": 0.04123,
+          "NLL": 0.65423,
+          "Brier": 0.39085
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 8553,
+        "epoch_time_seconds": 169.3293,
+        "loss_total": 0.73184,
+        "losses": {
+          "ce": 0.54966,
+          "logit": 0.18217
+        },
+        "grad_norm_mean": 18.59511,
+        "dev": {
+          "macro_f1": 0.67934,
+          "micro_f1": 0.696,
+          "accuracy": 0.696,
+          "ECE": 0.07373,
+          "NLL": 0.68431,
+          "Brier": 0.41096
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.67993,
+      "micro_f1": 0.706,
+      "accuracy": 0.706,
+      "per_class_f1": [0.5916, 0.67645, 0.77175],
+      "confusion_matrix": [
+        [176, 94, 42],
+        [90, 553, 226],
+        [17, 119, 683]
+      ],
+      "ECE": 0.04123,
+      "NLL": 0.65423,
+      "Brier": 0.39085
+    },
+    "test": {
+      "macro_f1": 0.66312,
+      "micro_f1": 0.66534,
+      "accuracy": 0.66534,
+      "per_class_f1": [0.6818, 0.66619, 0.64138],
+      "confusion_matrix": [
+        [2628, 1021, 323],
+        [1048, 3719, 1170],
+        [61, 488, 1826]
+      ],
+      "ECE": 0.05059,
+      "NLL": 0.74024,
+      "Brier": 0.44884,
+      "teacher_student_analysis": {
+        "top1_agreement": 0.79884,
+        "teacher_student_kl": 0.1487,
+        "teacher_correct_student_wrong": 1226,
+        "teacher_wrong_student_correct": 954,
+        "error_copying": 0.89913
+      }
+    }
+  }
+}
