@@ -83,19 +83,7 @@ def build_loader(
     For per-epoch reshuffling, pass `shuffle=True, seed=<base>` and call
     `loader.generator.manual_seed(base + epoch)` before each epoch's loop.
     """
-    ds = load_split(spec, split)
-    ds = ds.map(
-        lambda batch: tokenizer(
-            batch["text"],
-            padding="max_length",
-            truncation=True,
-            max_length=max_length,
-        ),
-        batched=True,
-        remove_columns=[c for c in ds.column_names if c != "label"],
-    )
-    ds = ds.rename_column("label", "labels")
-    ds = ds.with_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
+    ds = _tokenize_split(load_split(spec, split), tokenizer, max_length)
 
     generator = torch.Generator().manual_seed(seed) if (shuffle and seed is not None) else None
 
@@ -107,3 +95,18 @@ def build_loader(
         pin_memory=pin_memory,
         generator=generator,
     )
+
+
+def _tokenize_split(ds: Dataset, tokenizer: PreTrainedTokenizerBase, max_length: int) -> Dataset:
+    ds = ds.map(
+        lambda batch: tokenizer(
+            batch["text"],
+            padding="max_length",
+            truncation=True,
+            max_length=max_length,
+        ),
+        batched=True,
+        remove_columns=[c for c in ds.column_names if c != "label"],
+    )
+    ds = ds.rename_column("label", "labels")
+    return ds.with_format(type="torch", columns=["input_ids", "attention_mask", "labels"])

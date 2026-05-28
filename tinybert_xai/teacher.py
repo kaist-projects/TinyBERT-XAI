@@ -6,7 +6,6 @@ scripts. Private helpers carry the lower-level tensor and metadata mechanics.
 
 from __future__ import annotations
 
-import json
 import os
 import time
 from dataclasses import asdict, dataclass
@@ -17,7 +16,7 @@ import torch
 from tqdm.auto import tqdm
 from transformers import set_seed as hf_set_seed
 
-from tinybert_xai.checkpoints import load_state_dict, results_dir, save_state_dict, teacher_dir
+from tinybert_xai.checkpoints import load_state_dict, results_dir, save_state_dict, teacher_dir, validate_run_artifacts
 from tinybert_xai.datasets import build_loader
 from tinybert_xai.earlystop import EarlyStopper
 from tinybert_xai.eval import EvaluationResult, evaluate
@@ -26,10 +25,13 @@ from tinybert_xai.runlog import (
     RunMetadata,
     TrainEpochEntry,
     collect_hardware,
-    dumps_metadata_payload,
     make_run_id,
+    optimization_block,
+    patch_metadata_file,
+    reproducibility_block,
     write_run_metadata,
 )
+from tinybert_xai.training import RunningMeans, log_epoch, seed_loader, warn_non_finite
 from tinybert_xai.utils import clone_state_dict_cpu, count_params, move_batch_to_device, training_autocast
 
 if TYPE_CHECKING:
@@ -120,19 +122,7 @@ def start_teacher_metadata(cfg: "Config", spec: "DatasetSpec", device: str) -> R
             "checkpoint": cfg.teacher_checkpoint,
             "tokenizer": cfg.tokenizer_checkpoint,
         },
-        optimization={
-            "optimizer": "AdamW",
-            "learning_rate": cfg.learning_rate,
-            "weight_decay": 0.01,
-            "betas": [0.9, 0.999],
-            "eps": 1e-8,
-            "scheduler": None,
-            "grad_clip": None,
-            "precision": cfg.precision,
-            "train_batch_size": cfg.train_batch_size,
-            "eval_batch_size": cfg.eval_batch_size,
-            "num_epochs": cfg.num_epochs,
-        },
+        optimization=optimization_block(cfg),
         checkpoint_selection={
             "monitor": "dev_macro_f1",
             "mode": "max",
@@ -141,12 +131,7 @@ def start_teacher_metadata(cfg: "Config", spec: "DatasetSpec", device: str) -> R
             "early_stopped": None,
             "checkpoint": None,
         },
-        reproducibility={
-            "seed": cfg.seed,
-            "deterministic_algorithms": True,
-            "cublas_workspace_config": os.environ.get("CUBLAS_WORKSPACE_CONFIG"),
-            "shuffle_seed_scheme": "seed + epoch",
-        },
+        reproducibility=reproducibility_block(cfg),
         environment=hardware,
     )
 
@@ -223,12 +208,12 @@ def fine_tune_teacher(
         )
         history.append(_teacher_epoch_entry(epoch_stats, dev_result, epoch))
 
-        print(
-            f"  epoch {epoch}  "
-            f"train_loss={epoch_stats.loss_total_mean:.4f}  "
-            f"dev_macro_f1={dev_result.macro_f1:.4f}  "
-            f"dev_acc={dev_result.accuracy:.4f}  "
-            f"({epoch_stats.epoch_time_seconds:.1f}s)"
+        log_epoch(
+            epoch,
+            epoch_stats.loss_total_mean,
+            dev_result.macro_f1,
+            dev_result.accuracy,
+            epoch_stats.epoch_time_seconds,
         )
 
         save_state_dict(teacher.model, ckpt_dir / f"epoch_{epoch}.pt")
@@ -268,14 +253,8 @@ def train_teacher_epoch(
     epoch_start = time.perf_counter()
     model.train()
 
-    generator = getattr(loader, "generator", None)
-    if generator is not None:
-        generator.manual_seed(seed + epoch)
-
-    loss_total_sum = 0.0
-    loss_ce_sum = 0.0
-    grad_norm_sum = 0.0
-    n_batches = 0
+    seed_loader(loader, seed, epoch)
+    means = RunningMeans()
 
     pbar = tqdm(loader, total=len(loader), desc=f"epoch {epoch}", unit="batch")
     for batch in pbar:
@@ -283,10 +262,7 @@ def train_teacher_epoch(
         loss = _teacher_batch_loss(model, batch, device=device, precision=precision)
 
         if not torch.isfinite(loss):
-            pbar.write(
-                f"  [WARN] non-finite loss at epoch {epoch} "
-                f"step {global_step}: {loss.item():.6f} - skipping batch"
-            )
+            warn_non_finite(pbar, epoch, global_step, loss)
             optimizer.zero_grad()
             continue
 
@@ -295,17 +271,14 @@ def train_teacher_epoch(
         optimizer.step()
         optimizer.zero_grad()
 
-        loss_total_sum += loss.item()
-        loss_ce_sum += loss.item()
-        grad_norm_sum += grad_norm.item()
-        n_batches += 1
+        means.add({"loss": loss.item(), "grad_norm": grad_norm.item()})
         global_step += 1
         pbar.set_postfix(loss=f"{loss.item():.4f}")
 
     return TeacherEpochStats(
-        loss_total_mean=loss_total_sum / max(n_batches, 1),
-        loss_ce_mean=loss_ce_sum / max(n_batches, 1),
-        grad_norm_mean=grad_norm_sum / max(n_batches, 1),
+        loss_total_mean=means.mean("loss"),
+        loss_ce_mean=means.mean("loss"),
+        grad_norm_mean=means.mean("grad_norm"),
         global_step=global_step,
         epoch_time_seconds=time.perf_counter() - epoch_start,
     )
@@ -348,20 +321,7 @@ def evaluate_saved_teacher(
     model = load_classifier(cfg.teacher_checkpoint, spec.num_labels, device)
     load_state_dict(model, ckpt_path, device)
 
-    dev_loader = build_loader(
-        spec,
-        "validation",
-        tokenizer,
-        max_length=cfg.max_seq_length,
-        batch_size=cfg.eval_batch_size,
-    )
-    test_loader = build_loader(
-        spec,
-        "test",
-        tokenizer,
-        max_length=cfg.max_seq_length,
-        batch_size=cfg.eval_batch_size,
-    )
+    dev_loader, test_loader = _build_eval_loaders(cfg, spec, tokenizer)
 
     dev_result = evaluate(model, dev_loader, device=device, num_classes=spec.num_labels)
     test_result = evaluate(model, test_loader, device=device, num_classes=spec.num_labels)
@@ -372,23 +332,19 @@ def evaluate_saved_teacher(
         test_size=len(test_loader.dataset),
         dev_result=dev_result,
         test_result=test_result,
-        test_metrics=_teacher_test_metrics(test_result),
+        test_metrics=asdict(test_result),
     )
 
 
 def save_teacher_evaluation_result(result: TeacherEvaluationResult) -> None:
-    with open(result.metadata_path) as f:
-        metadata = json.load(f)
+    def mutate(metadata: dict) -> None:
+        metadata["dataset"]["splits"]["test"] = result.test_size
+        metadata["metrics"] = {
+            "dev": asdict(result.dev_result),
+            "test": result.test_metrics,
+        }
 
-    metadata["dataset"]["splits"]["test"] = result.test_size
-    metadata["metrics"] = {
-        "dev": asdict(result.dev_result),
-        "test": result.test_metrics,
-    }
-
-    with open(result.metadata_path, "w") as f:
-        f.write(dumps_metadata_payload(metadata))
-        f.write("\n")
+    patch_metadata_file(result.metadata_path, mutate)
 
 
 def _teacher_batch_loss(
@@ -403,6 +359,28 @@ def _teacher_batch_loss(
     if out.loss is None:
         raise RuntimeError("Teacher batch must include labels so the model returns CE loss")
     return out.loss
+
+
+def _build_eval_loaders(
+    cfg: "Config",
+    spec: "DatasetSpec",
+    tokenizer: "PreTrainedTokenizerBase",
+) -> tuple["DataLoader", "DataLoader"]:
+    dev_loader = build_loader(
+        spec,
+        "validation",
+        tokenizer,
+        max_length=cfg.max_seq_length,
+        batch_size=cfg.eval_batch_size,
+    )
+    test_loader = build_loader(
+        spec,
+        "test",
+        tokenizer,
+        max_length=cfg.max_seq_length,
+        batch_size=cfg.eval_batch_size,
+    )
+    return dev_loader, test_loader
 
 
 def _teacher_epoch_entry(
@@ -430,25 +408,9 @@ def _teacher_epoch_entry(
     )
 
 
-def _teacher_test_metrics(test_result: EvaluationResult) -> dict:
-    return asdict(test_result)
-
-
 def _require_teacher_artifacts(ckpt_path: Path, metadata_path: Path) -> None:
-    if not ckpt_path.exists():
-        raise FileNotFoundError(
-            f"Checkpoint not found: {ckpt_path}\n"
-            "Run scripts/01_train_teacher.py first."
-        )
-    if not metadata_path.exists():
-        raise FileNotFoundError(
-            f"run_metadata.json not found: {metadata_path}\n"
-            "Run scripts/01_train_teacher.py first."
-        )
-    with open(metadata_path) as f:
-        metadata = json.load(f)
-    if metadata.get("schema_version") != "2":
-        raise RuntimeError(
-            f"run_metadata.json is not schema v2: {metadata_path}\n"
-            "Run scripts/01_train_teacher.py to regenerate training metadata before evaluation."
-        )
+    validate_run_artifacts(
+        ckpt_path,
+        metadata_path,
+        regenerate_hint="Run scripts/01_train_teacher.py to regenerate training metadata before evaluation.",
+    )
