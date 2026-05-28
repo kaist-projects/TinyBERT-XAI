@@ -15,6 +15,10 @@ if TYPE_CHECKING:
     from tinybert_xai.conditions import ConditionSpec
 
 
+# Attention tuples have no embedding entry, unlike hidden-state tuples.
+TEACHER_ATTENTION_LAYERS = (2, 5, 8, 11)
+
+
 def logit_kd_loss(
     student_logits: torch.Tensor,
     teacher_logits: torch.Tensor,
@@ -63,6 +67,45 @@ def hidden_kd_loss(
     return torch.stack(layer_losses).mean()
 
 
+def attention_kd_loss(
+    student_attn: tuple[torch.Tensor, ...],
+    teacher_attn: tuple[torch.Tensor, ...],
+    attention_mask: torch.Tensor,
+    *,
+    layer_map: tuple[int, ...] = TEACHER_ATTENTION_LAYERS,
+) -> torch.Tensor:
+    """Masked MSE between student and mapped teacher attention probabilities."""
+    if len(student_attn) < len(layer_map):
+        raise RuntimeError(f"Student attentions must include {len(layer_map)} layers")
+    if len(teacher_attn) <= max(layer_map):
+        raise RuntimeError(f"Teacher attentions must include layer {max(layer_map)}")
+    if attention_mask is None:
+        raise RuntimeError("Attention KD requires attention_mask for token-pair masking")
+
+    pair_mask = _valid_token_pair_mask(attention_mask)
+    layer_losses = []
+    for student_layer_idx, teacher_layer_idx in enumerate(layer_map):
+        student_layer_attn = student_attn[student_layer_idx]
+        teacher_layer_attn = teacher_attn[teacher_layer_idx].detach().to(dtype=student_layer_attn.dtype)
+
+        if student_layer_attn.shape[1] != teacher_layer_attn.shape[1]:
+            student_layer_attn = student_layer_attn.mean(dim=1, keepdim=True)
+            teacher_layer_attn = teacher_layer_attn.mean(dim=1, keepdim=True)
+
+        if student_layer_attn.shape != teacher_layer_attn.shape:
+            raise RuntimeError(
+                "Student attention shape does not match teacher attention shape: "
+                f"{tuple(student_layer_attn.shape)} != {tuple(teacher_layer_attn.shape)}"
+            )
+
+        mask = pair_mask.to(device=student_layer_attn.device, dtype=student_layer_attn.dtype).unsqueeze(1)
+        num_heads = student_layer_attn.shape[1]
+        denominator = (mask.sum() * num_heads).clamp_min(1.0)
+        layer_losses.append((mask * (student_layer_attn - teacher_layer_attn).pow(2)).sum() / denominator)
+
+    return torch.stack(layer_losses).mean()
+
+
 def compute_student_losses(
     student_out: "SequenceClassifierOutput",
     teacher_out: "SequenceClassifierOutput | None",
@@ -82,11 +125,26 @@ def compute_student_losses(
     if cond.hidden:
         if projections is None:
             raise RuntimeError(f"Condition {cond.name!r} requires hidden projections")
+        if student_out.hidden_states is None or teacher_out.hidden_states is None:
+            raise RuntimeError(f"Condition {cond.name!r} requires hidden states")
         losses["hidden"] = hidden_kd_loss(
             student_out.hidden_states,
             teacher_out.hidden_states,
             projections,
             attention_mask,
         )
+    if cond.attention:
+        if student_out.attentions is None or teacher_out.attentions is None:
+            raise RuntimeError(f"Condition {cond.name!r} requires attentions")
+        losses["attention"] = attention_kd_loss(
+            student_out.attentions,
+            teacher_out.attentions,
+            attention_mask,
+        )
     total = sum(losses.values())
     return total, {name: value.item() for name, value in losses.items()}
+
+
+def _valid_token_pair_mask(attention_mask: torch.Tensor) -> torch.Tensor:
+    mask = attention_mask.bool()
+    return mask.unsqueeze(1) & mask.unsqueeze(2)

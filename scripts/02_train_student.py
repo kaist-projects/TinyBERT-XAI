@@ -1,19 +1,19 @@
-"""scripts/02_train_student.py - Hidden-KD TinyBERT student training.
+"""scripts/02_train_student.py - TinyBERT student training.
 
 Trains huawei-noah/TinyBERT_General_4L_312D on TweetEval-sentiment for the
-kd_hidden condition, writes a best checkpoint, and records schema-v2 metadata.
+selected condition, writes a best checkpoint, and records schema-v2 metadata.
 
 Usage
 -----
     conda activate tinybert-xai
     # from repo root
-    python scripts/02_train_student.py
+    python scripts/02_train_student.py kd_attn
 
 Output
 ------
-    checkpoints/students/tweet_eval-sentiment/kd_hidden/
+    checkpoints/students/tweet_eval-sentiment/<condition>/
         epoch_0.pt, epoch_1.pt, ..., best.pt
-    results/students/tweet_eval-sentiment/kd_hidden/
+    results/students/tweet_eval-sentiment/<condition>/
         run_metadata.json
 """
 
@@ -25,8 +25,8 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from tinybert_xai import (  # noqa: E402
+    CONDITIONS_BY_NAME,
     DATASET_TWEETEVAL_SENTIMENT,
-    KD_LOGIT_HIDDEN,
     Config,
     configure_reproducibility,
     fine_tune_student,
@@ -44,7 +44,7 @@ from tinybert_xai import (  # noqa: E402
 def main() -> None:
     cfg = Config()
     spec = DATASET_TWEETEVAL_SENTIMENT
-    cond = KD_LOGIT_HIDDEN
+    cond = CONDITIONS_BY_NAME[sys.argv[1] if len(sys.argv) > 1 else "kd_attn"]
 
     configure_reproducibility(cfg.seed)
     device = resolve_device(cfg)
