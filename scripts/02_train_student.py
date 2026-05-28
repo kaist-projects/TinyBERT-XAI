@@ -1,7 +1,7 @@
-"""scripts/02_train_student.py - KD-logit TinyBERT student training.
+"""scripts/02_train_student.py - Hidden-KD TinyBERT student training.
 
 Trains huawei-noah/TinyBERT_General_4L_312D on TweetEval-sentiment for the
-kd_logit condition, writes a best checkpoint, and records schema-v2 metadata.
+kd_hidden condition, writes a best checkpoint, and records schema-v2 metadata.
 
 Usage
 -----
@@ -11,9 +11,9 @@ Usage
 
 Output
 ------
-    checkpoints/students/tweet_eval-sentiment/kd_logit/
+    checkpoints/students/tweet_eval-sentiment/kd_hidden/
         epoch_0.pt, epoch_1.pt, ..., best.pt
-    results/students/tweet_eval-sentiment/kd_logit/
+    results/students/tweet_eval-sentiment/kd_hidden/
         run_metadata.json
 """
 
@@ -26,7 +26,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from tinybert_xai import (  # noqa: E402
     DATASET_TWEETEVAL_SENTIMENT,
-    KD_LOGIT,
+    KD_LOGIT_HIDDEN,
     Config,
     configure_reproducibility,
     fine_tune_student,
@@ -44,7 +44,7 @@ from tinybert_xai import (  # noqa: E402
 def main() -> None:
     cfg = Config()
     spec = DATASET_TWEETEVAL_SENTIMENT
-    cond = KD_LOGIT
+    cond = KD_LOGIT_HIDDEN
 
     configure_reproducibility(cfg.seed)
     device = resolve_device(cfg)
@@ -58,8 +58,10 @@ def main() -> None:
     meta.dataset["splits"] = {"train": data.train_size, "validation": data.dev_size}
     print(f"  train={data.train_size}  dev={data.dev_size}")
 
-    student = prepare_student_model(cfg, spec, device)
+    student = prepare_student_model(cfg, spec, cond, device)
     meta.model["parameter_count"] = student.parameter_count
+    if student.projection_parameter_count is not None:
+        meta.model["projection_parameter_count"] = student.projection_parameter_count
     teacher_model = None
     if cond.uses_teacher:
         print("Loading teacher checkpoint ...")

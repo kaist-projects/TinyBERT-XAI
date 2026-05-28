@@ -1,0 +1,169 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "student-kd_logit_hidden-tweet_eval-sentiment-2026-05-28T15:06:17Z",
+    "stage": "student",
+    "condition": "kd_logit_hidden"
+  },
+  "dataset": {
+    "name": "cardiffnlp/tweet_eval",
+    "config": "sentiment",
+    "num_labels": 3,
+    "label_names": [
+      "negative",
+      "neutral",
+      "positive"
+    ],
+    "splits": {
+      "train": 45615,
+      "validation": 2000,
+      "test": 12284
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "student_checkpoint": "huawei-noah/TinyBERT_General_4L_312D",
+    "tokenizer": "bert-base-uncased",
+    "teacher_checkpoint": "bert-base-uncased",
+    "parameter_count": 15312723,
+    "projection_parameter_count": 961536
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 1,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/students/tweet_eval-sentiment/kd_logit_hidden/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24118.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 391.52347,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 2851,
+        "epoch_time_seconds": 129.61771,
+        "loss_total": 1.44736,
+        "losses": {
+          "ce": 0.72837,
+          "logit": 0.32961,
+          "hidden": 0.38937
+        },
+        "grad_norm_mean": 15.17425,
+        "dev": {
+          "macro_f1": 0.65673,
+          "micro_f1": 0.6745,
+          "accuracy": 0.6745,
+          "ECE": 0.05726,
+          "NLL": 0.70564,
+          "Brier": 0.42661
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 5702,
+        "epoch_time_seconds": 123.44757,
+        "loss_total": 1.13402,
+        "losses": {
+          "ce": 0.6126,
+          "logit": 0.23124,
+          "hidden": 0.29017
+        },
+        "grad_norm_mean": 17.66036,
+        "dev": {
+          "macro_f1": 0.67528,
+          "micro_f1": 0.7015,
+          "accuracy": 0.7015,
+          "ECE": 0.0373,
+          "NLL": 0.66272,
+          "Brier": 0.39603
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 8553,
+        "epoch_time_seconds": 136.85503,
+        "loss_total": 0.99375,
+        "losses": {
+          "ce": 0.55391,
+          "logit": 0.1852,
+          "hidden": 0.25464
+        },
+        "grad_norm_mean": 18.67883,
+        "dev": {
+          "macro_f1": 0.67452,
+          "micro_f1": 0.6925,
+          "accuracy": 0.6925,
+          "ECE": 0.08722,
+          "NLL": 0.70354,
+          "Brier": 0.42277
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.67528,
+      "micro_f1": 0.7015,
+      "accuracy": 0.7015,
+      "per_class_f1": [0.5917, 0.67251, 0.76164],
+      "confusion_matrix": [
+        [171, 87, 54],
+        [75, 537, 257],
+        [20, 104, 695]
+      ],
+      "ECE": 0.0373,
+      "NLL": 0.66272,
+      "Brier": 0.39603
+    },
+    "test": {
+      "macro_f1": 0.65209,
+      "micro_f1": 0.65361,
+      "accuracy": 0.65361,
+      "per_class_f1": [0.6752, 0.65189, 0.62917],
+      "confusion_matrix": [
+        [2585, 994, 393],
+        [1039, 3559, 1339],
+        [61, 429, 1885]
+      ],
+      "ECE": 0.05387,
+      "NLL": 0.75655,
+      "Brier": 0.46018,
+      "teacher_student_analysis": {
+        "top1_agreement": 0.79046,
+        "teacher_student_kl": 0.15993,
+        "teacher_correct_student_wrong": 1343,
+        "teacher_wrong_student_correct": 927,
+        "error_copying": 0.8956
+      }
+    }
+  }
+}

@@ -23,6 +23,7 @@ from tinybert_xai.eval import (
 )
 from tinybert_xai.losses import compute_student_losses
 from tinybert_xai.models import load_classifier, load_tokenizer
+from tinybert_xai.projections import HiddenProjection
 from tinybert_xai.runlog import (
     RunMetadata,
     TrainEpochEntry,
@@ -58,6 +59,8 @@ class StudentModel:
     model: "PreTrainedModel"
     optimizer: torch.optim.Optimizer
     parameter_count: int
+    projections: HiddenProjection | None = None
+    projection_parameter_count: int | None = None
 
 
 @dataclass(frozen=True)
@@ -163,10 +166,19 @@ def load_student_data(cfg: "Config", spec: "DatasetSpec") -> StudentData:
     )
 
 
-def prepare_student_model(cfg: "Config", spec: "DatasetSpec", device: str) -> StudentModel:
+def prepare_student_model(cfg: "Config", spec: "DatasetSpec", cond: ConditionSpec, device: str) -> StudentModel:
     model = load_classifier(cfg.student_checkpoint, spec.num_labels, device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate)
-    return StudentModel(model=model, optimizer=optimizer, parameter_count=count_params(model))
+    projections = HiddenProjection().to(torch.device(device)) if cond.hidden else None
+    optimizer = torch.optim.AdamW(_trainable_parameters(model, projections), lr=cfg.learning_rate)
+    projection_parameter_count = count_params(projections) if projections is not None else None
+    parameter_count = count_params(model) + (projection_parameter_count or 0)
+    return StudentModel(
+        model=model,
+        optimizer=optimizer,
+        parameter_count=parameter_count,
+        projections=projections,
+        projection_parameter_count=projection_parameter_count,
+    )
 
 
 def fine_tune_student(
@@ -181,6 +193,8 @@ def fine_tune_student(
 ) -> StudentTrainingResult:
     if cond.uses_teacher and teacher_model is None:
         raise RuntimeError(f"Condition {cond.name!r} requires a teacher model")
+    if cond.hidden and student.projections is None:
+        raise RuntimeError(f"Condition {cond.name!r} requires hidden projections")
 
     stopper = EarlyStopper(patience=cfg.patience, mode="max")
     history: list[dict] = []
@@ -198,6 +212,7 @@ def fine_tune_student(
             data.train_loader,
             student.optimizer,
             cond,
+            projections=student.projections,
             teacher_model=teacher_model,
             device=device,
             seed=cfg.seed,
@@ -252,6 +267,7 @@ def train_student_epoch(
     optimizer: torch.optim.Optimizer,
     cond: ConditionSpec,
     *,
+    projections: HiddenProjection | None,
     teacher_model: "PreTrainedModel | None",
     device: str,
     seed: int,
@@ -261,6 +277,8 @@ def train_student_epoch(
 ) -> StudentEpochStats:
     epoch_start = time.perf_counter()
     model.train()
+    if projections is not None:
+        projections.train()
     if teacher_model is not None:
         teacher_model.eval()
 
@@ -274,6 +292,7 @@ def train_student_epoch(
             model,
             batch,
             cond,
+            projections=projections,
             teacher_model=teacher_model,
             device=device,
             precision=precision,
@@ -285,7 +304,7 @@ def train_student_epoch(
             continue
 
         loss.backward()
-        grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float("inf"))
+        grad_norm = torch.nn.utils.clip_grad_norm_(_trainable_parameters(model, projections), max_norm=float("inf"))
         optimizer.step()
         optimizer.zero_grad()
 
@@ -379,6 +398,7 @@ def _student_batch_losses(
     batch: dict[str, torch.Tensor],
     cond: ConditionSpec,
     *,
+    projections: HiddenProjection | None,
     teacher_model: "PreTrainedModel | None",
     device: str,
     precision: str,
@@ -393,7 +413,23 @@ def _student_batch_losses(
 
     with training_autocast(device, precision):
         student_out = model(**batch)
-    return compute_student_losses(student_out, teacher_out, cond)
+    return compute_student_losses(
+        student_out,
+        teacher_out,
+        cond,
+        projections=projections,
+        attention_mask=batch["attention_mask"],
+    )
+
+
+def _trainable_parameters(
+    model: "PreTrainedModel",
+    projections: HiddenProjection | None,
+) -> list[torch.nn.Parameter]:
+    params = list(model.parameters())
+    if projections is not None:
+        params.extend(projections.parameters())
+    return params
 
 
 def _build_eval_loaders(

@@ -250,3 +250,42 @@ def test_student_run_id_includes_condition():
     run_id = make_run_id("student", "tweet_eval-sentiment", "ce_only")
 
     assert run_id.startswith("student-ce_only-tweet_eval-sentiment-")
+
+
+def test_student_schema_v2_round_trips_hidden_losses(tmp_path):
+    meta = RunMetadata(
+        schema_version="2",
+        run={"run_id": "student-kd_hidden-test", "stage": "student", "condition": "kd_hidden"},
+        dataset={"name": "x", "config": None, "num_labels": 2, "label_names": ["a", "b"], "splits": {}},
+        model={
+            "student_checkpoint": "student",
+            "tokenizer": "tokenizer",
+            "teacher_checkpoint": "teacher",
+            "parameter_count": 15312771,
+            "projection_parameter_count": 961536,
+        },
+        optimization={},
+        checkpoint_selection={},
+        reproducibility={},
+        environment={},
+        training={
+            "history": [
+                {
+                    "epoch": 0,
+                    "global_step": 1,
+                    "epoch_time_seconds": 1.0,
+                    "loss_total": 1.75,
+                    "losses": {"ce": 0.5, "hidden": 1.25},
+                    "grad_norm_mean": 2.0,
+                    "dev": {},
+                }
+            ]
+        },
+    )
+
+    path = tmp_path / "run_metadata.json"
+    write_run_metadata(meta, path)
+    payload = json.loads(path.read_text())
+
+    assert payload["training"]["history"][0]["losses"] == {"ce": 0.5, "hidden": 1.25}
+    assert payload["model"]["projection_parameter_count"] == 961536
