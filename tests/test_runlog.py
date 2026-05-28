@@ -212,6 +212,13 @@ def test_student_schema_v2_uses_condition_and_active_losses(tmp_path):
                 "ECE": 0.033333333,
                 "NLL": 0.977777777,
                 "Brier": 0.522222222,
+                "teacher_student_analysis": {
+                    "top1_agreement": 0.712345678,
+                    "teacher_student_kl": 0.123456789,
+                    "teacher_correct_student_wrong": 44,
+                    "teacher_wrong_student_correct": 31,
+                    "error_copying": 0.456789123,
+                },
             }
         },
     )
@@ -229,7 +236,13 @@ def test_student_schema_v2_uses_condition_and_active_losses(tmp_path):
     assert payload["optimization"]["precision"] == "bf16"
     assert payload["training"]["history"][0]["losses"] == {"ce": 0.89123}
     assert payload["training"]["history"][0]["loss_total"] == 0.89123
-    assert "teacher_student_analysis" not in text
+    assert payload["metrics"]["test"]["teacher_student_analysis"] == {
+        "top1_agreement": 0.71235,
+        "teacher_student_kl": 0.12346,
+        "teacher_correct_student_wrong": 44,
+        "teacher_wrong_student_correct": 31,
+        "error_copying": 0.45679,
+    }
     assert "raw_loss" not in text
 
 

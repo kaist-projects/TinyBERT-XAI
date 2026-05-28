@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-import os
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -12,21 +10,30 @@ from typing import TYPE_CHECKING
 import torch
 from tqdm.auto import tqdm
 
-from tinybert_xai.checkpoints import load_state_dict, results_dir, save_state_dict, student_dir
+from tinybert_xai.checkpoints import load_state_dict, results_dir, save_state_dict, student_dir, validate_run_artifacts
 from tinybert_xai.conditions import ConditionSpec
 from tinybert_xai.datasets import build_loader
 from tinybert_xai.earlystop import EarlyStopper
-from tinybert_xai.eval import EvaluationResult, evaluate
+from tinybert_xai.eval import (
+    EvaluationResult,
+    TeacherStudentAnalysis,
+    collect_probabilities,
+    compute_teacher_student_analysis,
+    evaluate,
+)
 from tinybert_xai.losses import compute_student_losses
 from tinybert_xai.models import load_classifier, load_tokenizer
 from tinybert_xai.runlog import (
     RunMetadata,
     TrainEpochEntry,
     collect_hardware,
-    dumps_metadata_payload,
     make_run_id,
+    optimization_block,
+    patch_metadata_file,
+    reproducibility_block,
     write_run_metadata,
 )
+from tinybert_xai.training import RunningMeans, log_epoch, seed_loader, warn_non_finite
 from tinybert_xai.utils import clone_state_dict_cpu, count_params, move_batch_to_device, training_autocast
 
 if TYPE_CHECKING:
@@ -80,6 +87,7 @@ class StudentEvaluationResult:
     dev_result: EvaluationResult
     test_result: EvaluationResult
     test_metrics: dict
+    teacher_student_analysis: TeacherStudentAnalysis | None = None
 
 
 def start_student_metadata(
@@ -114,19 +122,7 @@ def start_student_metadata(
             "padding": "max_length",
         },
         model=model,
-        optimization={
-            "optimizer": "AdamW",
-            "learning_rate": cfg.learning_rate,
-            "weight_decay": 0.01,
-            "betas": [0.9, 0.999],
-            "eps": 1e-8,
-            "scheduler": None,
-            "grad_clip": None,
-            "precision": cfg.precision,
-            "train_batch_size": cfg.train_batch_size,
-            "eval_batch_size": cfg.eval_batch_size,
-            "num_epochs": cfg.num_epochs,
-        },
+        optimization=optimization_block(cfg),
         checkpoint_selection={
             "monitor": "dev_macro_f1",
             "mode": "max",
@@ -135,12 +131,7 @@ def start_student_metadata(
             "early_stopped": None,
             "checkpoint": None,
         },
-        reproducibility={
-            "seed": cfg.seed,
-            "deterministic_algorithms": True,
-            "cublas_workspace_config": os.environ.get("CUBLAS_WORKSPACE_CONFIG"),
-            "shuffle_seed_scheme": "seed + epoch",
-        },
+        reproducibility=reproducibility_block(cfg),
         environment=hardware,
     )
 
@@ -224,12 +215,12 @@ def fine_tune_student(
         )
         history.append(_student_epoch_entry(epoch_stats, dev_result, epoch))
 
-        print(
-            f"  epoch {epoch}  "
-            f"train_loss={epoch_stats.loss_total_mean:.4f}  "
-            f"dev_macro_f1={dev_result.macro_f1:.4f}  "
-            f"dev_acc={dev_result.accuracy:.4f}  "
-            f"({epoch_stats.epoch_time_seconds:.1f}s)"
+        log_epoch(
+            epoch,
+            epoch_stats.loss_total_mean,
+            dev_result.macro_f1,
+            dev_result.accuracy,
+            epoch_stats.epoch_time_seconds,
         )
 
         save_state_dict(student.model, ckpt_dir / f"epoch_{epoch}.pt")
@@ -273,14 +264,8 @@ def train_student_epoch(
     if teacher_model is not None:
         teacher_model.eval()
 
-    generator = getattr(loader, "generator", None)
-    if generator is not None:
-        generator.manual_seed(seed + epoch)
-
-    loss_total_sum = 0.0
-    loss_sums: dict[str, float] = {}
-    grad_norm_sum = 0.0
-    n_batches = 0
+    seed_loader(loader, seed, epoch)
+    means = RunningMeans()
 
     pbar = tqdm(loader, total=len(loader), desc=f"epoch {epoch}", unit="batch")
     for batch in pbar:
@@ -295,10 +280,7 @@ def train_student_epoch(
         )
 
         if not torch.isfinite(loss):
-            pbar.write(
-                f"  [WARN] non-finite loss at epoch {epoch} "
-                f"step {global_step}: {loss.item():.6f} - skipping batch"
-            )
+            warn_non_finite(pbar, epoch, global_step, loss)
             optimizer.zero_grad()
             continue
 
@@ -307,18 +289,14 @@ def train_student_epoch(
         optimizer.step()
         optimizer.zero_grad()
 
-        loss_total_sum += loss.item()
-        for name, value in losses.items():
-            loss_sums[name] = loss_sums.get(name, 0.0) + value
-        grad_norm_sum += grad_norm.item()
-        n_batches += 1
+        means.add({"loss_total": loss.item(), "grad_norm": grad_norm.item(), **losses})
         global_step += 1
         pbar.set_postfix(loss=f"{loss.item():.4f}")
 
     return StudentEpochStats(
-        loss_total_mean=loss_total_sum / max(n_batches, 1),
-        loss_means={name: value / max(n_batches, 1) for name, value in loss_sums.items()},
-        grad_norm_mean=grad_norm_sum / max(n_batches, 1),
+        loss_total_mean=means.mean("loss_total"),
+        loss_means={name: value for name, value in means.means().items() if name not in ("loss_total", "grad_norm")},
+        grad_norm_mean=means.mean("grad_norm"),
         global_step=global_step,
         epoch_time_seconds=time.perf_counter() - epoch_start,
     )
@@ -354,6 +332,7 @@ def evaluate_saved_student(
     cond: ConditionSpec,
     *,
     device: str,
+    teacher_model: "PreTrainedModel | None" = None,
 ) -> StudentEvaluationResult:
     ckpt_path = student_dir(spec.name, cond.name) / "best.pt"
     metadata_path = results_dir("student", spec.name, cond.name) / "run_metadata.json"
@@ -363,23 +342,11 @@ def evaluate_saved_student(
     model = load_classifier(cfg.student_checkpoint, spec.num_labels, device)
     load_state_dict(model, ckpt_path, device)
 
-    dev_loader = build_loader(
-        spec,
-        "validation",
-        tokenizer,
-        max_length=cfg.max_seq_length,
-        batch_size=cfg.eval_batch_size,
-    )
-    test_loader = build_loader(
-        spec,
-        "test",
-        tokenizer,
-        max_length=cfg.max_seq_length,
-        batch_size=cfg.eval_batch_size,
-    )
+    dev_loader, test_loader = _build_eval_loaders(cfg, spec, tokenizer)
 
     dev_result = evaluate(model, dev_loader, device=device, num_classes=spec.num_labels)
     test_result = evaluate(model, test_loader, device=device, num_classes=spec.num_labels)
+    teacher_student_analysis = _teacher_student_analysis(model, teacher_model, test_loader, device)
 
     return StudentEvaluationResult(
         metadata_path=metadata_path,
@@ -387,23 +354,24 @@ def evaluate_saved_student(
         test_size=len(test_loader.dataset),
         dev_result=dev_result,
         test_result=test_result,
-        test_metrics=_student_test_metrics(test_result),
+        test_metrics=asdict(test_result),
+        teacher_student_analysis=teacher_student_analysis,
     )
 
 
 def save_student_evaluation_result(result: StudentEvaluationResult) -> None:
-    with open(result.metadata_path) as f:
-        metadata = json.load(f)
+    def mutate(metadata: dict) -> None:
+        metadata["dataset"]["splits"]["test"] = result.test_size
+        test_metrics = dict(result.test_metrics)
+        if result.teacher_student_analysis is not None:
+            test_metrics["teacher_student_analysis"] = asdict(result.teacher_student_analysis)
 
-    metadata["dataset"]["splits"]["test"] = result.test_size
-    metadata["metrics"] = {
-        "dev": asdict(result.dev_result),
-        "test": result.test_metrics,
-    }
+        metadata["metrics"] = {
+            "dev": asdict(result.dev_result),
+            "test": test_metrics,
+        }
 
-    with open(result.metadata_path, "w") as f:
-        f.write(dumps_metadata_payload(metadata))
-        f.write("\n")
+    patch_metadata_file(result.metadata_path, mutate)
 
 
 def _student_batch_losses(
@@ -426,6 +394,44 @@ def _student_batch_losses(
     with training_autocast(device, precision):
         student_out = model(**batch)
     return compute_student_losses(student_out, teacher_out, cond)
+
+
+def _build_eval_loaders(
+    cfg: "Config",
+    spec: "DatasetSpec",
+    tokenizer: "PreTrainedTokenizerBase",
+) -> tuple["DataLoader", "DataLoader"]:
+    dev_loader = build_loader(
+        spec,
+        "validation",
+        tokenizer,
+        max_length=cfg.max_seq_length,
+        batch_size=cfg.eval_batch_size,
+    )
+    test_loader = build_loader(
+        spec,
+        "test",
+        tokenizer,
+        max_length=cfg.max_seq_length,
+        batch_size=cfg.eval_batch_size,
+    )
+    return dev_loader, test_loader
+
+
+def _teacher_student_analysis(
+    student_model: "PreTrainedModel",
+    teacher_model: "PreTrainedModel | None",
+    test_loader: "DataLoader",
+    device: str,
+) -> TeacherStudentAnalysis | None:
+    if teacher_model is None:
+        return None
+
+    teacher_probs, labels = collect_probabilities(teacher_model, test_loader, device=device)
+    student_probs, student_labels = collect_probabilities(student_model, test_loader, device=device)
+    if not torch.equal(labels, student_labels):
+        raise RuntimeError("Teacher and student evaluation labels did not align")
+    return compute_teacher_student_analysis(teacher_probs, student_probs, labels)
 
 
 def _student_epoch_entry(
@@ -453,30 +459,10 @@ def _student_epoch_entry(
     )
 
 
-def _student_test_metrics(test_result: EvaluationResult) -> dict:
-    return asdict(test_result)
-
-
 def _require_student_artifacts(ckpt_path: Path, metadata_path: Path, cond: ConditionSpec) -> None:
-    if not ckpt_path.exists():
-        raise FileNotFoundError(
-            f"Checkpoint not found: {ckpt_path}\n"
-            "Run scripts/02_train_student.py first."
-        )
-    if not metadata_path.exists():
-        raise FileNotFoundError(
-            f"run_metadata.json not found: {metadata_path}\n"
-            "Run scripts/02_train_student.py first."
-        )
-    with open(metadata_path) as f:
-        metadata = json.load(f)
-    if metadata.get("schema_version") != "2":
-        raise RuntimeError(
-            f"run_metadata.json is not schema v2: {metadata_path}\n"
-            "Run scripts/02_train_student.py to regenerate training metadata before evaluation."
-        )
-    if metadata.get("run", {}).get("condition") != cond.name:
-        raise RuntimeError(
-            f"run_metadata.json condition does not match {cond.name!r}: {metadata_path}\n"
-            "Run scripts/02_train_student.py for the requested condition."
-        )
+    validate_run_artifacts(
+        ckpt_path,
+        metadata_path,
+        regenerate_hint="Run scripts/02_train_student.py to regenerate training metadata before evaluation.",
+        expected_condition=cond.name,
+    )

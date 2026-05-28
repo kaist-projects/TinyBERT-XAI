@@ -45,6 +45,17 @@ def evaluate(
     )
 
 
+def collect_probabilities(
+    model: "PreTrainedModel",
+    loader: "DataLoader",
+    *,
+    device: str,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Run inference over `loader`, return (probs, labels) as CPU tensors."""
+    _, labels, probs = _run_inference(model, loader, device=device)
+    return torch.from_numpy(probs), torch.from_numpy(labels)
+
+
 def _run_inference(
     model: "PreTrainedModel",
     loader: "DataLoader",
@@ -103,15 +114,17 @@ def _calibration_metrics(
     correct = (probs.argmax(axis=1) == labels).astype(float)
     bin_edges = np.linspace(0.0, 1.0, n_bins + 1)
     ece_val = 0.0
-    for lo, hi in zip(bin_edges[:-1], bin_edges[1:]):
-        mask = (confidences >= lo) & (confidences < hi)
+    for i, (lo, hi) in enumerate(zip(bin_edges[:-1], bin_edges[1:])):
+        if i == n_bins - 1:
+            mask = (confidences >= lo) & (confidences <= hi)
+        else:
+            mask = (confidences >= lo) & (confidences < hi)
         if mask.sum() == 0:
             continue
         ece_val += mask.sum() / n * abs(correct[mask].mean() - confidences[mask].mean())
 
     # NLL — mean -log(p_true)
-    true_probs = probs[idx, labels]
-    nll_val = -np.mean(np.log(np.clip(true_probs, 1e-12, 1.0)))
+    nll_val = skm.log_loss(labels, probs, labels=list(range(num_classes)))
 
     # Brier — mean squared error vs one-hot
     one_hot = np.zeros_like(probs)

@@ -29,9 +29,12 @@ from tinybert_xai.datasets import (
 from tinybert_xai.earlystop import EarlyStopper
 from tinybert_xai.eval import (
     EvaluationResult,
+    TeacherStudentAnalysis,
+    collect_probabilities,
+    compute_teacher_student_analysis,
     evaluate,
 )
-from tinybert_xai.losses import compute_student_losses
+from tinybert_xai.losses import compute_student_losses, logit_kd_loss
 from tinybert_xai.models import load_tokenizer, load_classifier
 from tinybert_xai.runlog import (
     RunMetadata,
@@ -102,9 +105,13 @@ __all__ = [
     "ALL_CONDITIONS",
     # eval
     "EvaluationResult",
+    "TeacherStudentAnalysis",
+    "collect_probabilities",
+    "compute_teacher_student_analysis",
     "evaluate",
     # models / losses
     "compute_student_losses",
+    "logit_kd_loss",
     "load_tokenizer",
     "load_classifier",
     # runlog

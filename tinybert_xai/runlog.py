@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import os
 import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -71,10 +72,44 @@ def collect_hardware(device: str) -> dict:
     }
 
 
+def optimization_block(cfg) -> dict:
+    return {
+        "optimizer": "AdamW",
+        "learning_rate": cfg.learning_rate,
+        "weight_decay": 0.01,
+        "betas": [0.9, 0.999],
+        "eps": 1e-8,
+        "scheduler": None,
+        "grad_clip": None,
+        "precision": cfg.precision,
+        "train_batch_size": cfg.train_batch_size,
+        "eval_batch_size": cfg.eval_batch_size,
+        "num_epochs": cfg.num_epochs,
+    }
+
+
+def reproducibility_block(cfg) -> dict:
+    return {
+        "seed": cfg.seed,
+        "deterministic_algorithms": True,
+        "cublas_workspace_config": os.environ.get("CUBLAS_WORKSPACE_CONFIG"),
+        "shuffle_seed_scheme": "seed + epoch",
+    }
+
+
 def write_run_metadata(meta: RunMetadata, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as f:
         f.write(dumps_run_metadata(meta))
+        f.write("\n")
+
+
+def patch_metadata_file(path: Path, mutate) -> None:
+    with open(path) as f:
+        metadata = json.load(f)
+    mutate(metadata)
+    with open(path, "w") as f:
+        f.write(dumps_metadata_payload(metadata))
         f.write("\n")
 
 
