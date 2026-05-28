@@ -27,7 +27,7 @@ The full project context lives in `docs/notes/02-project-synthesis.md` and `CLAU
 | Model framework | HuggingFace `transformers` 4.40+ | Modern, has `output_hidden_states` / `output_attentions` built-in. The `reference/transformer/` module is obsolete. |
 | Trainer | **Custom PyTorch training loop**, not `HF Trainer` | We need fine-grained control over 4 loss terms with per-condition toggles. Trainer's `compute_loss` override gets ugly for 8 conditions. |
 | Config format | YAML per dataset + YAML per condition; `dataclass` schema in `tinybert_xai/config.py` | One config file per run; sweep driver iterates. |
-| Logging | Plain JSON per run (`run_metadata.json`) + Weights & Biases optional | Design doc §6 dictates JSON fields; W&B nice-to-have. |
+| Logging | Plain JSON per run (`run_metadata.json`) + Weights & Biases optional | Uses schema v2: nested run/dataset/model/optimization/checkpoint/reproducibility/environment/training/metrics blocks, rounded for expert review. This intentionally supersedes the noisier design doc §6 field list. |
 | Seed / reproducibility | `seed=42` everywhere, `torch.use_deterministic_algorithms(True)` where possible | Design doc §9 forbids seed variation. |
 | Pipeline layering | Scripts orchestrate; `tinybert_xai/teacher.py` owns teacher pipeline contracts; low-level tensor/file helpers stay separate | Keeps abstraction levels consistent and gives iter-2 student KD a pattern without forcing it into the teacher loop. |
 | Mixed precision | `torch.cuda.amp.autocast(bfloat16)` | RTX 3090+ has bf16. Halves activation memory. |
@@ -91,7 +91,7 @@ Each iteration gets its own detailed sub-plan **at the time we start it**, not n
 
 **Definition of done:**
 - Teacher reaches sensible macro-F1 on TweetEval-sentiment dev (the published BERT-base baseline is ~0.66 macro-F1; we should match within a couple points).
-- `metrics.json` validates against the design doc §6 schema.
+- `run_metadata.json` validates against schema v2 and records optimizer, checkpoint selection, reproducibility, environment, split sizes, metrics, and efficiency.
 - Teacher checkpoint loadable in `eval()` mode in a separate process.
 
 ---
@@ -292,7 +292,7 @@ Each iteration gets its own detailed sub-plan **at the time we start it**, not n
 
 ## Cross-cutting concerns (applied throughout, not a separate step)
 
-- **Run metadata.** Every run writes `run_metadata.json` with the fields from design doc §6. Includes: config hash, dataset hash, split-index hash, package versions, GPU model, random seed, early-stop info, all losses (component + raw), `grad_norm`, `learning_rate`, `epoch`, `global_step`, train/eval times.
+- **Run metadata.** Every run writes schema-v2 `run_metadata.json`. It records run identity, git commit, dataset and label semantics, model/tokenizer checkpoints, optimizer settings, checkpoint-selection policy, reproducibility settings, environment/package versions, active-only losses, `grad_norm`, `global_step`, train/eval times, metrics, and efficiency. Raw loss twins are intentionally omitted because loss weights are fixed at 1.0.
 - **Checkpoint naming.** `{stage}/{dataset}/{condition}/{epoch}.pt`. Stage ∈ {teacher, student}.
 - **Determinism.** `seed=42` everywhere. `torch.use_deterministic_algorithms(True)`. CUBLAS workspace env var if needed.
 - **Loss safety.** `nan` / `inf` checks in the train loop; fail fast.

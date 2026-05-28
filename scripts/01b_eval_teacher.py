@@ -2,7 +2,7 @@
 
 Loads best.pt into a *fresh* model (separate process verification per design
 doc), evaluates on the test split, measures efficiency, then patches the
-teacher's run_metadata.json with dev_metrics, test_metrics, and efficiency.
+teacher's run_metadata.json with schema-v2 metrics and efficiency.
 
 Run AFTER 01_train_teacher.py has completed.
 

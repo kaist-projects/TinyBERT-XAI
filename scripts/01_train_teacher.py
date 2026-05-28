@@ -50,10 +50,11 @@ def main() -> None:
 
     print("Loading datasets …")
     data = load_teacher_data(cfg, spec)
-    meta.splits = {"train": data.train_size, "validation": data.dev_size}
+    meta.dataset["splits"] = {"train": data.train_size, "validation": data.dev_size}
     print(f"  train={data.train_size}  dev={data.dev_size}")
 
     teacher = prepare_teacher_model(cfg, spec, device)
+    meta.model["parameter_count"] = teacher.parameter_count
     result = fine_tune_teacher(cfg, spec, data, teacher, device=device)
     best_ckpt_path, metadata_path = save_teacher_training_result(meta, result, spec)
 

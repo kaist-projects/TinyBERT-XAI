@@ -25,12 +25,15 @@ from tinybert_xai.models import load_classifier, load_tokenizer
 from tinybert_xai.runlog import (
     RunMetadata,
     TrainEpochEntry,
+    collect_git_commit,
     collect_hardware,
     collect_package_versions,
+    dumps_metadata_payload,
     make_run_id,
+    metric_definitions,
     write_run_metadata,
 )
-from tinybert_xai.utils import clone_state_dict_cpu, move_batch_to_device
+from tinybert_xai.utils import clone_state_dict_cpu, count_params, move_batch_to_device
 
 if TYPE_CHECKING:
     from torch.utils.data import DataLoader
@@ -53,6 +56,7 @@ class TeacherData:
 class TeacherModel:
     model: "PreTrainedModel"
     optimizer: torch.optim.Optimizer
+    parameter_count: int
 
 
 @dataclass(frozen=True)
@@ -99,16 +103,64 @@ def resolve_device(cfg: "Config") -> str:
 
 
 def start_teacher_metadata(cfg: "Config", spec: "DatasetSpec", device: str) -> RunMetadata:
+    hardware = collect_hardware(device)
     return RunMetadata(
-        run_id=make_run_id("teacher", spec.name),
-        stage="teacher",
-        dataset=f"{spec.hf_path}:{spec.hf_config}",
-        dataset_family="sentiment",
-        condition=None,
-        seed=cfg.seed,
-        config=asdict(cfg),
-        package_versions=collect_package_versions(),
-        hardware=collect_hardware(device),
+        schema_version="2",
+        run={
+            "run_id": make_run_id("teacher", spec.name),
+            "stage": "teacher",
+            "condition": None,
+            "git_commit": collect_git_commit(),
+            "seed": cfg.seed,
+        },
+        dataset={
+            "name": spec.hf_path,
+            "config": spec.hf_config,
+            "family": spec.family,
+            "num_labels": spec.num_labels,
+            "label_names": spec.label_names,
+            "splits": {},
+            "max_seq_length": cfg.max_seq_length,
+            "truncation": True,
+            "padding": "max_length",
+        },
+        model={
+            "checkpoint": cfg.teacher_checkpoint,
+            "tokenizer": cfg.tokenizer_checkpoint,
+        },
+        optimization={
+            "optimizer": "AdamW",
+            "learning_rate": cfg.learning_rate,
+            "weight_decay": 0.01,
+            "betas": [0.9, 0.999],
+            "eps": 1e-8,
+            "scheduler": None,
+            "grad_clip": None,
+            "precision": "fp32",
+            "train_batch_size": cfg.train_batch_size,
+            "eval_batch_size": cfg.eval_batch_size,
+            "num_epochs": cfg.num_epochs,
+        },
+        checkpoint_selection={
+            "monitor": "dev_macro_f1",
+            "mode": "max",
+            "patience": cfg.patience,
+            "best_epoch": None,
+            "early_stopped": None,
+            "checkpoint": None,
+        },
+        reproducibility={
+            "seed": cfg.seed,
+            "deterministic_algorithms": True,
+            "warn_only": True,
+            "cublas_workspace_config": os.environ.get("CUBLAS_WORKSPACE_CONFIG"),
+            "shuffle_seed_scheme": "seed + epoch",
+        },
+        environment={
+            **hardware,
+            "package_versions": collect_package_versions(),
+        },
+        metric_definitions=metric_definitions(),
     )
 
 
@@ -142,7 +194,7 @@ def load_teacher_data(cfg: "Config", spec: "DatasetSpec") -> TeacherData:
 def prepare_teacher_model(cfg: "Config", spec: "DatasetSpec", device: str) -> TeacherModel:
     model = load_classifier(cfg.teacher_checkpoint, spec.num_labels, device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate)
-    return TeacherModel(model=model, optimizer=optimizer)
+    return TeacherModel(model=model, optimizer=optimizer, parameter_count=count_params(model))
 
 
 def fine_tune_teacher(
@@ -181,7 +233,7 @@ def fine_tune_teacher(
             device=device,
             num_classes=spec.num_labels,
         )
-        history.append(_teacher_epoch_entry(epoch_stats, dev_result, cfg, epoch))
+        history.append(_teacher_epoch_entry(epoch_stats, dev_result, epoch))
 
         print(
             f"  epoch {epoch}  "
@@ -280,12 +332,13 @@ def save_teacher_training_result(
     best_ckpt_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(result.best_state, best_ckpt_path)
 
+    meta.checkpoint_selection["best_epoch"] = result.best_epoch
+    meta.checkpoint_selection["early_stopped"] = result.early_stopped
+    meta.checkpoint_selection["checkpoint"] = str(best_ckpt_path)
     meta.training = {
         "epochs_completed": len(result.history),
-        "best_epoch": result.best_epoch,
         "best_dev_macro_f1": result.best_dev_macro_f1,
         "train_time_seconds": result.train_time_seconds,
-        "early_stopped": result.early_stopped,
         "history": result.history,
     }
 
@@ -348,13 +401,16 @@ def save_teacher_evaluation_result(result: TeacherEvaluationResult) -> None:
     with open(result.metadata_path) as f:
         metadata = json.load(f)
 
-    metadata["splits"]["test"] = result.test_size
-    metadata["dev_metrics"] = asdict(result.dev_result)
-    metadata["test_metrics"] = result.test_metrics
+    metadata["dataset"]["splits"]["test"] = result.test_size
+    metadata["metrics"] = {
+        "dev": asdict(result.dev_result),
+        "test": result.test_metrics,
+    }
     metadata["efficiency"] = asdict(result.efficiency)
 
     with open(result.metadata_path, "w") as f:
-        json.dump(metadata, f, indent=2)
+        f.write(dumps_metadata_payload(metadata))
+        f.write("\n")
 
 
 def _teacher_batch_loss(
@@ -370,43 +426,30 @@ def _teacher_batch_loss(
 def _teacher_epoch_entry(
     stats: TeacherEpochStats,
     dev_result: EvaluationResult,
-    cfg: "Config",
     epoch: int,
 ) -> dict:
     return asdict(
         TrainEpochEntry(
             epoch=epoch,
-            train_loss_total=stats.loss_total_mean,
-            train_loss_ce=stats.loss_ce_mean,
-            train_raw_loss_ce=stats.loss_ce_mean,
-            train_loss_logit=None,
-            train_raw_loss_logit=None,
-            train_loss_hidden=None,
-            train_raw_loss_hidden=None,
-            train_loss_attention=None,
-            train_raw_loss_attention=None,
-            grad_norm_mean=stats.grad_norm_mean,
-            learning_rate=cfg.learning_rate,
             global_step=stats.global_step,
             epoch_time_seconds=stats.epoch_time_seconds,
-            dev_macro_f1=dev_result.macro_f1,
-            dev_micro_f1=dev_result.micro_f1,
-            dev_accuracy=dev_result.accuracy,
-            dev_ECE=dev_result.ECE,
-            dev_NLL=dev_result.NLL,
-            dev_Brier=dev_result.Brier,
+            loss_total=stats.loss_total_mean,
+            losses={"ce": stats.loss_ce_mean},
+            grad_norm_mean=stats.grad_norm_mean,
+            dev={
+                "macro_f1": dev_result.macro_f1,
+                "micro_f1": dev_result.micro_f1,
+                "accuracy": dev_result.accuracy,
+                "ECE": dev_result.ECE,
+                "NLL": dev_result.NLL,
+                "Brier": dev_result.Brier,
+            },
         )
     )
 
 
 def _teacher_test_metrics(test_result: EvaluationResult) -> dict:
-    test_metrics = asdict(test_result)
-    test_metrics["top1_agreement"] = None
-    test_metrics["teacher_student_kl"] = None
-    test_metrics["teacher_correct_student_wrong"] = None
-    test_metrics["teacher_wrong_student_correct"] = None
-    test_metrics["error_copying"] = None
-    return test_metrics
+    return asdict(test_result)
 
 
 def _require_teacher_artifacts(ckpt_path: Path, metadata_path: Path) -> None:
@@ -419,4 +462,11 @@ def _require_teacher_artifacts(ckpt_path: Path, metadata_path: Path) -> None:
         raise FileNotFoundError(
             f"run_metadata.json not found: {metadata_path}\n"
             "Run scripts/01_train_teacher.py first."
+        )
+    with open(metadata_path) as f:
+        metadata = json.load(f)
+    if metadata.get("schema_version") != "2":
+        raise RuntimeError(
+            f"run_metadata.json is not schema v2: {metadata_path}\n"
+            "Run scripts/01_train_teacher.py to regenerate training metadata before evaluation."
         )
