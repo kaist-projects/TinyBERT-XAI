@@ -25,12 +25,10 @@ from tinybert_xai.models import load_classifier, load_tokenizer
 from tinybert_xai.runlog import (
     RunMetadata,
     TrainEpochEntry,
-    collect_git_commit,
     collect_hardware,
     collect_package_versions,
     dumps_metadata_payload,
     make_run_id,
-    metric_definitions,
     write_run_metadata,
 )
 from tinybert_xai.utils import clone_state_dict_cpu, count_params, move_batch_to_device
@@ -110,8 +108,6 @@ def start_teacher_metadata(cfg: "Config", spec: "DatasetSpec", device: str) -> R
             "run_id": make_run_id("teacher", spec.name),
             "stage": "teacher",
             "condition": None,
-            "git_commit": collect_git_commit(),
-            "seed": cfg.seed,
         },
         dataset={
             "name": spec.hf_path,
@@ -160,7 +156,6 @@ def start_teacher_metadata(cfg: "Config", spec: "DatasetSpec", device: str) -> R
             **hardware,
             "package_versions": collect_package_versions(),
         },
-        metric_definitions=metric_definitions(),
     )
 
 

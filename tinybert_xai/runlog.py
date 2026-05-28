@@ -6,7 +6,6 @@ import datetime as _dt
 import json
 import platform
 import re
-import subprocess
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -46,7 +45,6 @@ class RunMetadata:
     training: dict | None = None
     metrics: dict = field(default_factory=dict)
     efficiency: dict | None = None
-    metric_definitions: dict = field(default_factory=dict)
 
 
 def make_run_id(stage: str, dataset_name: str) -> str:
@@ -88,29 +86,7 @@ def collect_hardware(device: str) -> dict:
         "device": actual_device,
         "gpu_model": gpu_model,
         "gpu_memory_total_mb": gpu_total_mb,
-        "cuda_available": torch.cuda.is_available(),
         "torch_cuda": torch.version.cuda,
-    }
-
-
-def collect_git_commit() -> str | None:
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-        ).strip()
-    except (OSError, subprocess.CalledProcessError):
-        return None
-
-
-def metric_definitions() -> dict:
-    return {
-        "ECE": "10 equal-width bins, max-confidence",
-        "NLL": "mean negative log probability of the true class",
-        "Brier": "mean multiclass squared error against one-hot labels",
-        "confusion_matrix": "rows=true, cols=pred",
-        "per_class_f1": "ordered by label id",
     }
 
 
@@ -131,25 +107,16 @@ def dumps_metadata_payload(payload: dict) -> str:
     return _compact_numeric_lists(text)
 
 
+_EXACT_FLOAT_KEYS = {"learning_rate", "weight_decay", "eps"}
+
+
 def _rounded(value: Any, key: str | None = None) -> Any:
     if isinstance(value, dict):
         return {k: _rounded(v, k) for k, v in value.items()}
     if isinstance(value, list):
-        if key in {"betas"}:
-            return value
-        return [_rounded(v, key) for v in value]
+        return value if key == "betas" else [_rounded(v, key) for v in value]
     if isinstance(value, float):
-        if key in {"learning_rate", "weight_decay", "eps"}:
-            return value
-        if key in {"latency_p50_ms", "latency_p95_ms"}:
-            return round(value, 2)
-        if key == "throughput_samples_per_sec":
-            return round(value, 1)
-        if key and key.endswith("_seconds"):
-            return round(value, 1)
-        if key and (key.endswith("_mb") or key == "model_size_mb"):
-            return round(value, 1)
-        return round(value, 4)
+        return value if key in _EXACT_FLOAT_KEYS else round(value, 5)
     return value
 
 
@@ -161,8 +128,4 @@ def _compact_numeric_lists(text: str) -> str:
         values = re.findall(number, match.group(1), re.I)
         return "[" + ", ".join(values) + "]"
 
-    previous = None
-    while previous != text:
-        previous = text
-        text = pattern.sub(repl, text)
-    return text
+    return pattern.sub(repl, text)

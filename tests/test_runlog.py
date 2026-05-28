@@ -10,8 +10,6 @@ def test_schema_v2_rounding_and_teacher_fields(tmp_path):
             "run_id": "teacher-test",
             "stage": "teacher",
             "condition": None,
-            "git_commit": "abc1234",
-            "seed": 42,
         },
         dataset={
             "name": "cardiffnlp/tweet_eval",
@@ -61,7 +59,6 @@ def test_schema_v2_rounding_and_teacher_fields(tmp_path):
             "device": "cuda:0",
             "gpu_model": "NVIDIA GeForce RTX 3090",
             "gpu_memory_total_mb": 24118.25,
-            "cuda_available": True,
             "torch_cuda": "12.4",
             "package_versions": {
                 "torch": "2.5.1+cu124",
@@ -116,7 +113,6 @@ def test_schema_v2_rounding_and_teacher_fields(tmp_path):
             "parameter_count": 109484547,
             "gpu_memory_mb": 990.81689453125,
         },
-        metric_definitions={"confusion_matrix": "rows=true, cols=pred"},
     )
 
     path = tmp_path / "run_metadata.json"
@@ -126,16 +122,21 @@ def test_schema_v2_rounding_and_teacher_fields(tmp_path):
     payload = json.loads(text)
 
     assert payload["schema_version"] == "2"
+    assert payload["run"] == {"run_id": "teacher-test", "stage": "teacher", "condition": None}
     assert payload["optimization"]["learning_rate"] == 2e-5
+    assert payload["optimization"]["weight_decay"] == 0.01
     assert payload["optimization"]["eps"] == 1e-8
-    assert payload["training"]["best_dev_macro_f1"] == 0.7201
-    assert payload["training"]["train_time_seconds"] == 857.0
-    assert payload["training"]["history"][0]["loss_total"] == 0.6555
-    assert payload["training"]["history"][0]["epoch_time_seconds"] == 273.8
-    assert payload["efficiency"]["latency_p50_ms"] == 49.7
-    assert payload["efficiency"]["throughput_samples_per_sec"] == 643.8
+    assert payload["training"]["best_dev_macro_f1"] == 0.72013
+    assert payload["training"]["train_time_seconds"] == 857.00057
+    assert payload["training"]["history"][0]["loss_total"] == 0.65548
+    assert payload["training"]["history"][0]["epoch_time_seconds"] == 273.79378
+    assert payload["efficiency"]["latency_p50_ms"] == 49.6983
+    assert payload["efficiency"]["throughput_samples_per_sec"] == 643.83905
     assert payload["metrics"]["dev"]["confusion_matrix"] == [[215, 74, 23], [104, 581, 184]]
 
     assert "train_raw_loss_ce" not in text
     assert "teacher_student_kl" not in text
+    assert "git_commit" not in text
+    assert "metric_definitions" not in text
+    assert "cuda_available" not in text
     assert "[215, 74, 23]" in text

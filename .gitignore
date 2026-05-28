@@ -56,6 +56,7 @@ htmlcov/
 # ─── IDE / editor ──────────────────────────────────────────────────────────
 .vscode/
 .idea/
+.antigravitycli/
 *.swp
 *.swo
 *~
@@ -120,6 +121,7 @@ attention_heatmaps/
 predictions/
 metrics/
 confusion_matrices/
+ITERATIONS.md
 
 # ─── Secrets / env ─────────────────────────────────────────────────────────
 .env
