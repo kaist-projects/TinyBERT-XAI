@@ -34,8 +34,9 @@ from tinybert_xai.eval import (
     compute_teacher_student_analysis,
     evaluate,
 )
-from tinybert_xai.losses import compute_student_losses, logit_kd_loss
+from tinybert_xai.losses import compute_student_losses, hidden_kd_loss, logit_kd_loss
 from tinybert_xai.models import load_tokenizer, load_classifier
+from tinybert_xai.projections import HiddenProjection
 from tinybert_xai.runlog import (
     RunMetadata,
     TrainEpochEntry,
@@ -111,9 +112,11 @@ __all__ = [
     "evaluate",
     # models / losses
     "compute_student_losses",
+    "hidden_kd_loss",
     "logit_kd_loss",
     "load_tokenizer",
     "load_classifier",
+    "HiddenProjection",
     # runlog
     "RunMetadata",
     "TrainEpochEntry",

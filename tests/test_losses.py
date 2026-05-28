@@ -4,8 +4,9 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from tinybert_xai import KD_LOGIT
-from tinybert_xai.losses import compute_student_losses, logit_kd_loss
+from tinybert_xai import KD_HIDDEN, KD_LOGIT, KD_LOGIT_HIDDEN
+from tinybert_xai.losses import compute_student_losses, hidden_kd_loss, logit_kd_loss
+from tinybert_xai.projections import HiddenProjection
 
 
 def test_logit_kd_loss_identical_logits_is_zero():
@@ -45,3 +46,99 @@ def test_compute_student_losses_adds_logit_component_for_kd_logit():
 
     assert losses.keys() == {"ce", "logit"}
     assert total.item() == pytest.approx(losses["ce"] + losses["logit"])
+
+
+def test_hidden_kd_loss_is_zero_when_projected_student_matches_teacher():
+    projections = HiddenProjection(student_hidden_dim=2, teacher_hidden_dim=3)
+    for projection in projections.projections:
+        projection.weight.data.zero_()
+        projection.bias.data.zero_()
+    student_hidden = tuple(torch.randn(2, 3, 2) for _ in range(5))
+    teacher_hidden = tuple(torch.zeros(2, 3, 3) for _ in range(13))
+    attention_mask = torch.ones(2, 3)
+
+    assert hidden_kd_loss(student_hidden, teacher_hidden, projections, attention_mask).item() == pytest.approx(0.0)
+
+
+def test_hidden_kd_loss_ignores_padded_tokens():
+    projections = HiddenProjection(student_hidden_dim=2, teacher_hidden_dim=3)
+    for projection in projections.projections:
+        projection.weight.data.zero_()
+        projection.bias.data.zero_()
+    student_hidden = tuple(torch.zeros(1, 3, 2) for _ in range(5))
+    teacher_hidden = [torch.zeros(1, 3, 3) for _ in range(13)]
+    for layer_idx in (3, 6, 9, 12):
+        teacher_hidden[layer_idx][:, 1:] = 1000.0
+    attention_mask = torch.tensor([[1, 0, 0]])
+
+    assert hidden_kd_loss(student_hidden, tuple(teacher_hidden), projections, attention_mask).item() == pytest.approx(0.0)
+
+
+def test_hidden_kd_loss_averages_mapped_layers():
+    projections = HiddenProjection(student_hidden_dim=2, teacher_hidden_dim=2)
+    for projection in projections.projections:
+        projection.weight.data.zero_()
+        projection.bias.data.zero_()
+    student_hidden = tuple(torch.zeros(1, 2, 2) for _ in range(5))
+    teacher_hidden = [torch.zeros(1, 2, 2) for _ in range(13)]
+    for teacher_layer_idx, value in zip((3, 6, 9, 12), (1.0, 2.0, 3.0, 4.0), strict=True):
+        teacher_hidden[teacher_layer_idx].fill_(value)
+    attention_mask = torch.ones(1, 2)
+
+    assert hidden_kd_loss(student_hidden, tuple(teacher_hidden), projections, attention_mask).item() == pytest.approx(
+        (1.0 + 4.0 + 9.0 + 16.0) / 4.0
+    )
+
+
+def test_compute_student_losses_adds_hidden_component_for_kd_hidden():
+    projections = HiddenProjection(student_hidden_dim=2, teacher_hidden_dim=3)
+    for projection in projections.projections:
+        projection.weight.data.zero_()
+        projection.bias.data.zero_()
+    student_out = SimpleNamespace(
+        loss=torch.tensor(0.5),
+        logits=torch.tensor([[2.0, 0.0]]),
+        hidden_states=tuple(torch.randn(1, 2, 2) for _ in range(5)),
+    )
+    teacher_out = SimpleNamespace(
+        logits=torch.tensor([[0.0, 2.0]]),
+        hidden_states=tuple(torch.zeros(1, 2, 3) for _ in range(13)),
+    )
+
+    total, losses = compute_student_losses(
+        student_out,
+        teacher_out,
+        KD_HIDDEN,
+        projections=projections,
+        attention_mask=torch.ones(1, 2),
+    )
+
+    assert losses.keys() == {"ce", "hidden"}
+    assert total.item() == pytest.approx(losses["ce"] + losses["hidden"])
+
+
+def test_compute_student_losses_supports_logit_hidden_condition():
+    projections = HiddenProjection(student_hidden_dim=2, teacher_hidden_dim=3)
+    for projection in projections.projections:
+        projection.weight.data.zero_()
+        projection.bias.data.zero_()
+    student_out = SimpleNamespace(
+        loss=torch.tensor(0.5),
+        logits=torch.tensor([[2.0, 0.0]]),
+        hidden_states=tuple(torch.randn(1, 2, 2) for _ in range(5)),
+    )
+    teacher_out = SimpleNamespace(
+        logits=torch.tensor([[0.0, 2.0]]),
+        hidden_states=tuple(torch.zeros(1, 2, 3) for _ in range(13)),
+    )
+
+    total, losses = compute_student_losses(
+        student_out,
+        teacher_out,
+        KD_LOGIT_HIDDEN,
+        projections=projections,
+        attention_mask=torch.ones(1, 2),
+    )
+
+    assert losses.keys() == {"ce", "logit", "hidden"}
+    assert total.item() == pytest.approx(sum(losses.values()))
