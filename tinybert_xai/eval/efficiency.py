@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
+from tinybert_xai.utils import count_params
+
 if TYPE_CHECKING:
     from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
@@ -58,7 +60,7 @@ def compute_efficiency(
         latency_p95_ms=float(np.percentile(latencies, 95)),
         throughput_samples_per_sec=float(batch_size / (latencies.mean() / 1000)),
         model_size_mb=_model_size_mb(model),
-        parameter_count=sum(p.numel() for p in model.parameters()),
+        parameter_count=count_params(model),
         gpu_memory_mb=float(gpu_mem) if gpu_mem is not None else None,
     )
 

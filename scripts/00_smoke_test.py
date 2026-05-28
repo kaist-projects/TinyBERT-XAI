@@ -18,13 +18,13 @@ from tinybert_xai import (  # noqa: E402
     DATASET_TWEETEVAL_SENTIMENT,
     KDOutputs,
     KDPair,
+    configure_reproducibility,
     count_params,
     encode_batch,
-    get_device,
     load_classifier,
     load_split,
     load_tokenizer,
-    set_seed,
+    resolve_device,
 )
 
 
@@ -56,8 +56,8 @@ def assert_shapes_consistent(out: KDOutputs) -> None:
 
 def main() -> None:
     cfg = Config()
-    set_seed(cfg.seed)
-    device = cfg.device or get_device()
+    configure_reproducibility(cfg.seed)
+    device = resolve_device(cfg)
 
     spec = DATASET_TWEETEVAL_SENTIMENT
     tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)

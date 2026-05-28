@@ -51,9 +51,7 @@ from tinybert_xai.teacher import (
 from tinybert_xai.utils import (
     clone_state_dict_cpu,
     count_params,
-    get_device,
     move_batch_to_device,
-    set_seed,
 )
 
 __all__ = [
@@ -108,8 +106,6 @@ __all__ = [
     # earlystop
     "EarlyStopper",
     # utils
-    "set_seed",
-    "get_device",
     "count_params",
     "move_batch_to_device",
     "clone_state_dict_cpu",

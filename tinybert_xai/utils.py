@@ -1,19 +1,6 @@
-import os
 from collections.abc import Mapping
 
 import torch
-from transformers import set_seed as _hf_set_seed
-
-
-def set_seed(seed: int) -> None:
-    # Required for deterministic matmul on CUDA >= 10.2; cuBLAS reads it on
-    # first call, so set before any model forward.
-    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
-    _hf_set_seed(seed)
-
-
-def get_device() -> str:
-    return "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def count_params(model: torch.nn.Module) -> int:

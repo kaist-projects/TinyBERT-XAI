@@ -7,6 +7,7 @@ scripts. Private helpers carry the lower-level tensor and metadata mechanics.
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -14,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import torch
 from tqdm.auto import tqdm
+from transformers import set_seed as hf_set_seed
 
 from tinybert_xai.checkpoints import load_state_dict, results_dir, save_state_dict, teacher_dir
 from tinybert_xai.datasets import build_loader
@@ -28,7 +30,7 @@ from tinybert_xai.runlog import (
     make_run_id,
     write_run_metadata,
 )
-from tinybert_xai.utils import clone_state_dict_cpu, get_device, move_batch_to_device, set_seed
+from tinybert_xai.utils import clone_state_dict_cpu, move_batch_to_device
 
 if TYPE_CHECKING:
     from torch.utils.data import DataLoader
@@ -85,12 +87,15 @@ class TeacherEvaluationResult:
 
 
 def configure_reproducibility(seed: int) -> None:
-    set_seed(seed)
+    # Required for deterministic matmul on CUDA >= 10.2; cuBLAS reads it on
+    # first call, so set before any model forward.
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+    hf_set_seed(seed)
     torch.use_deterministic_algorithms(True, warn_only=True)
 
 
 def resolve_device(cfg: "Config") -> str:
-    return cfg.device or get_device()
+    return cfg.device or ("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def start_teacher_metadata(cfg: "Config", spec: "DatasetSpec", device: str) -> RunMetadata:
