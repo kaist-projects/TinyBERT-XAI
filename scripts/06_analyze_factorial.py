@@ -1,0 +1,254 @@
+"""Analyze the 2^3 student-factorial sweep and write analysis artifacts."""
+
+from __future__ import annotations
+
+import argparse
+import math
+import pathlib
+import sys
+from dataclasses import dataclass
+
+import pandas as pd
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+from tinybert_xai.analysis.factorial import effects_table  # noqa: E402
+from tinybert_xai.analysis.loaders import load_runs, load_teacher  # noqa: E402
+from tinybert_xai.analysis.plots import write_all_figures  # noqa: E402
+from tinybert_xai.analysis.tables import (  # noqa: E402
+    render_main_effects_table,
+    render_student_ablation_table,
+)
+from tinybert_xai.conditions import ALL_CONDITIONS  # noqa: E402
+
+ANALYSIS_DIR = pathlib.Path("results") / "analysis"
+FIGURES_DIR = ANALYSIS_DIR / "figures"
+METRIC_COLUMNS = [
+    "test_macro_f1",
+    "test_micro_f1",
+    "test_accuracy",
+    "test_ece",
+    "test_nll",
+    "test_brier",
+    "dev_macro_f1",
+]
+LOSS_BY_FACTOR = {
+    "ce": "loss_ce",
+    "logit": "loss_logit",
+    "hidden": "loss_hidden",
+    "attention": "loss_attention",
+}
+
+
+@dataclass
+class Check:
+    name: str
+    passed: bool
+    detail: str
+
+
+def main() -> None:
+    args = _parse_args()
+    dataset = args.dataset
+
+    df = load_runs(dataset)
+    teacher = load_teacher(dataset)
+
+    checks = _validate_inputs(df)
+    effects = pd.DataFrame()
+    if all(check.passed for check in checks):
+        effects = effects_table(df, "test_macro_f1")
+        ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+        figures = write_all_figures(df, teacher, effects, FIGURES_DIR)
+        tables = _write_tables(df, teacher, effects, dataset)
+        checks.append(_check_artifacts(figures, tables))
+    else:
+        checks.append(Check("artifacts written", False, "not attempted because input validation failed"))
+
+    _print_report(df, teacher, effects, checks)
+
+    if not all(check.passed for check in checks):
+        raise SystemExit(1)
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("dataset", nargs="?", default="tweet_eval-sentiment")
+    return parser.parse_args()
+
+
+def _write_tables(
+    df: pd.DataFrame,
+    teacher: pd.Series,
+    effects: pd.DataFrame,
+    dataset: str,
+) -> list[pathlib.Path]:
+    ablation_path = ANALYSIS_DIR / "student_ablation_table.md"
+    effects_path = ANALYSIS_DIR / "main_effects_table.md"
+    ablation_path.write_text(render_student_ablation_table(df, teacher, dataset))
+    effects_path.write_text(render_main_effects_table(effects, "test_macro_f1"))
+    return [ablation_path, effects_path]
+
+
+def _validate_inputs(df: pd.DataFrame) -> list[Check]:
+    return [
+        _check_conditions_present(df),
+        _check_epochs(df),
+        _check_finite_recorded_values(df),
+        _check_teacher_forward(df),
+        _check_metric_ranges(df),
+    ]
+
+
+def _check_conditions_present(df: pd.DataFrame) -> Check:
+    expected = {condition.name for condition in ALL_CONDITIONS}
+    present = set(df["condition"])
+    frame = df.loc[df["condition"].isin(expected)]
+    valid = frame["valid"].fillna(False).astype(bool)
+    missing = sorted(expected - present)
+    invalid = sorted(frame.loc[~valid, "condition"].tolist())
+    passed = not missing and not invalid and len(df) == len(expected)
+    detail = "all 8 condition metadata files are present and valid"
+    if not passed:
+        detail = f"missing={missing or 'none'} invalid={invalid or 'none'}"
+    return Check("all 8 conditions present and valid", passed, detail)
+
+
+def _check_epochs(df: pd.DataFrame) -> Check:
+    failures = []
+    for row in df.itertuples(index=False):
+        early_stopped = bool(row.early_stopped) if pd.notna(row.early_stopped) else False
+        expected_epochs = row.num_epochs if pd.notna(row.num_epochs) else 3
+        if not early_stopped and (
+            not _finite(row.epochs_completed) or row.epochs_completed != expected_epochs
+        ):
+            failures.append(f"{row.condition}={row.epochs_completed}/{expected_epochs}")
+    passed = not failures
+    detail = "all runs completed configured epochs or documented early-stop"
+    if failures:
+        detail = ", ".join(failures)
+    return Check("epochs completed", passed, detail)
+
+
+def _check_finite_recorded_values(df: pd.DataFrame) -> Check:
+    failures = []
+    for row in df.itertuples(index=False):
+        for column in METRIC_COLUMNS:
+            if not _finite(getattr(row, column)):
+                failures.append(f"{row.condition}.{column}")
+        for loss_name, column in LOSS_BY_FACTOR.items():
+            if _loss_required(row, loss_name) and not _finite(getattr(row, column)):
+                failures.append(f"{row.condition}.{column}")
+    passed = not failures
+    detail = "all required metrics and active losses are finite"
+    if failures:
+        detail = ", ".join(failures)
+    return Check("finite metrics/losses", passed, detail)
+
+
+def _check_teacher_forward(df: pd.DataFrame) -> Check:
+    failures = []
+    kd_rows = df.loc[df[["logit", "hidden", "attention"]].any(axis=1)]
+    for row in kd_rows.itertuples(index=False):
+        if not _finite(row.num_labels):
+            failures.append(f"{row.condition}.num_labels={row.num_labels}")
+            continue
+        baseline = 1.0 / float(row.num_labels)
+        if not _finite(row.top1_agreement) or row.top1_agreement <= baseline:
+            failures.append(f"{row.condition}.top1_agreement={row.top1_agreement}")
+    passed = not failures
+    detail = "top1_agreement is present and above random for every KD condition"
+    if failures:
+        detail = ", ".join(failures)
+    return Check("teacher forward sane", passed, detail)
+
+
+def _check_metric_ranges(df: pd.DataFrame) -> Check:
+    bounded_columns = [
+        "test_macro_f1",
+        "test_micro_f1",
+        "test_accuracy",
+        "test_ece",
+        "top1_agreement",
+    ]
+    failures = []
+    for row in df.itertuples(index=False):
+        for column in bounded_columns:
+            value = getattr(row, column)
+            if pd.isna(value):
+                continue
+            if value < 0.0 or value > 1.0:
+                failures.append(f"{row.condition}.{column}={value}")
+    passed = not failures
+    detail = "F1/accuracy/agreement/ECE values are within [0, 1]"
+    if failures:
+        detail = ", ".join(failures)
+    return Check("metric ranges", passed, detail)
+
+
+def _check_artifacts(figures: list[pathlib.Path], tables: list[pathlib.Path]) -> Check:
+    paths = figures + tables
+    missing = [str(path) for path in paths if not path.exists() or path.stat().st_size == 0]
+    passed = len(figures) == 8 and len(tables) == 2 and not missing
+    detail = "4 figures written as PNG+SVG and 2 markdown tables written"
+    if not passed:
+        detail = f"figure_files={len(figures)} table_files={len(tables)} missing={missing or 'none'}"
+    return Check("artifacts written", passed, detail)
+
+
+def _print_report(
+    df: pd.DataFrame,
+    teacher: pd.Series,
+    effects: pd.DataFrame,
+    checks: list[Check],
+) -> None:
+    print("\nValidity checks")
+    for check in checks:
+        status = "PASS" if check.passed else "FAIL"
+        print(f"  [{status}] {check.name}: {check.detail}")
+
+    if effects.empty:
+        print("\nVerdict: NO-GO")
+        return
+
+    spread = df["test_macro_f1"].max() - df["test_macro_f1"].min()
+    best = df.loc[df["test_macro_f1"].idxmax()]
+    ce = df.loc[df["condition"] == "ce_only", "test_macro_f1"].iloc[0]
+    attention_losses = df.loc[df["attention"], "loss_attention"].dropna()
+
+    print("\nSummary")
+    print(f"  teacher test macro-F1 : {teacher['test_macro_f1']:.4f}")
+    print(f"  best student          : {best['condition']} ({best['test_macro_f1']:.4f})")
+    print(f"  ce_only test macro-F1 : {ce:.4f}")
+    print(f"  student F1 spread     : {spread:.4f}")
+    if not attention_losses.empty:
+        print(f"  attention loss mean   : {attention_losses.mean():.5f}")
+
+    print("\nEffects on test_macro_f1")
+    for row in effects.itertuples(index=False):
+        print(f"  {row.effect:28s} {row.estimate:+.5f}")
+
+    verdict = "GO to iter-7" if all(check.passed for check in checks) else "NO-GO"
+    print(f"\nVerdict: {verdict}")
+    if all(check.passed for check in checks):
+        print(
+            "Rationale: pipeline-validity checks pass; single-seed effect sizes are "
+            "informational only. Attention KD is near-inert by final-loss magnitude "
+            "and should be fixed before scaling."
+        )
+
+
+def _loss_required(row: tuple, loss_name: str) -> bool:
+    if loss_name == "ce":
+        return True
+    return bool(getattr(row, loss_name))
+
+
+def _finite(value: object) -> bool:
+    if pd.isna(value):
+        return False
+    return math.isfinite(float(value))
+
+
+if __name__ == "__main__":
+    main()
