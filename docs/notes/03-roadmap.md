@@ -226,7 +226,7 @@ was near-inert in the pilot.
 tweet_eval-sentiment` passes the pipeline-validity gate: all 8 student
 conditions are present and valid, all completed 3 epochs, required metrics and
 active losses are finite, KD teacher-student agreement is above random, metric
-ranges are valid, and the script writes all expected tables/figures. Verdict:
+ranges are valid, and the script writes the expected report/figures. Verdict:
 **GO to iter-7** on pipeline health.
 
 Do not over-read the effect magnitudes from this single seed: student macro-F1
@@ -379,9 +379,8 @@ The project is done when:
 Iter-5 added Attention KD and completed the remaining four conditions (`kd_attn`,
 `kd_logit_attn`, `kd_hidden_attn`, `kd_full`). Iter-6 added the reusable
 analysis package (`tinybert_xai/analysis/`), `scripts/06_analyze_factorial.py`,
-code-generated `results/analysis/student_ablation_table.md`,
-`results/analysis/main_effects_table.md`, and four figures (PNG+SVG) under
-`results/analysis/figures/`. The iter-6 gate is **GO to iter-7** because the
+code-generated `results/analysis/factorial_report.md`, and four PNG figures
+under `results/analysis/figures/`. The iter-6 gate is **GO to iter-7** because the
 pipeline is healthy; the observed ±0.0198 student spread is treated as
 single-seed noise, and the per-signal effects are informational only. Caveat:
 post-softmax attention KD is near-inert (`loss_attention` mean **0.00453**) and

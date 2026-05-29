@@ -16,13 +16,13 @@ from tinybert_xai.analysis.factorial import effects_table  # noqa: E402
 from tinybert_xai.analysis.loaders import load_runs, load_teacher  # noqa: E402
 from tinybert_xai.analysis.plots import write_all_figures  # noqa: E402
 from tinybert_xai.analysis.tables import (  # noqa: E402
-    render_main_effects_table,
-    render_student_ablation_table,
+    render_factorial_report,
 )
 from tinybert_xai.conditions import ALL_CONDITIONS  # noqa: E402
 
 ANALYSIS_DIR = pathlib.Path("results") / "analysis"
 FIGURES_DIR = ANALYSIS_DIR / "figures"
+REPORT_PATH = ANALYSIS_DIR / "factorial_report.md"
 METRIC_COLUMNS = [
     "test_macro_f1",
     "test_micro_f1",
@@ -59,9 +59,11 @@ def main() -> None:
     if all(check.passed for check in checks):
         effects = effects_table(df, "test_macro_f1")
         ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+        _remove_stale_artifacts()
         figures = write_all_figures(df, teacher, effects, FIGURES_DIR)
-        tables = _write_tables(df, teacher, effects, dataset)
-        checks.append(_check_artifacts(figures, tables))
+        report = _write_report(df, teacher, effects, checks, figures, dataset)
+        checks.append(_check_artifacts(figures, report))
+        _write_report(df, teacher, effects, checks, figures, dataset)
     else:
         checks.append(Check("artifacts written", False, "not attempted because input validation failed"))
 
@@ -77,17 +79,28 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _write_tables(
+def _write_report(
     df: pd.DataFrame,
     teacher: pd.Series,
     effects: pd.DataFrame,
+    checks: list[Check],
+    figures: list[pathlib.Path],
     dataset: str,
-) -> list[pathlib.Path]:
-    ablation_path = ANALYSIS_DIR / "student_ablation_table.md"
-    effects_path = ANALYSIS_DIR / "main_effects_table.md"
-    ablation_path.write_text(render_student_ablation_table(df, teacher, dataset))
-    effects_path.write_text(render_main_effects_table(effects, "test_macro_f1"))
-    return [ablation_path, effects_path]
+) -> pathlib.Path:
+    REPORT_PATH.write_text(
+        render_factorial_report(df, teacher, effects, checks, figures, REPORT_PATH, dataset)
+    )
+    return REPORT_PATH
+
+
+def _remove_stale_artifacts() -> None:
+    for path in [
+        ANALYSIS_DIR / "student_ablation_table.md",
+        ANALYSIS_DIR / "main_effects_table.md",
+    ]:
+        path.unlink(missing_ok=True)
+    for path in FIGURES_DIR.glob("*.svg"):
+        path.unlink()
 
 
 def _validate_inputs(df: pd.DataFrame) -> list[Check]:
@@ -183,13 +196,25 @@ def _check_metric_ranges(df: pd.DataFrame) -> Check:
     )
 
 
-def _check_artifacts(figures: list[pathlib.Path], tables: list[pathlib.Path]) -> Check:
-    paths = figures + tables
+def _check_artifacts(figures: list[pathlib.Path], report: pathlib.Path) -> Check:
+    paths = figures + [report]
     missing = [str(path) for path in paths if not path.exists() or path.stat().st_size == 0]
-    passed = len(figures) == 8 and len(tables) == 2 and not missing
-    detail = "4 figures written as PNG+SVG and 2 markdown tables written"
+    unexpected_svg = [str(path) for path in FIGURES_DIR.glob("*.svg")]
+    stale_tables = [
+        str(path)
+        for path in [
+            ANALYSIS_DIR / "student_ablation_table.md",
+            ANALYSIS_DIR / "main_effects_table.md",
+        ]
+        if path.exists()
+    ]
+    passed = len(figures) == 4 and report.exists() and not missing and not unexpected_svg and not stale_tables
+    detail = "4 PNG figures and 1 markdown report written"
     if not passed:
-        detail = f"figure_files={len(figures)} table_files={len(tables)} missing={missing or 'none'}"
+        detail = (
+            f"figure_files={len(figures)} report={report.exists()} missing={missing or 'none'} "
+            f"svg={unexpected_svg or 'none'} stale_tables={stale_tables or 'none'}"
+        )
     return Check("artifacts written", passed, detail)
 
 

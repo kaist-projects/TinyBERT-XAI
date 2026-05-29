@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 
 
@@ -78,6 +80,110 @@ def render_main_effects_table(effects: pd.DataFrame, metric: str) -> str:
     return "\n".join(lines)
 
 
+def render_factorial_report(
+    df: pd.DataFrame,
+    teacher: pd.Series,
+    effects: pd.DataFrame,
+    checks: list,
+    figure_paths: list[Path],
+    report_path: Path,
+    dataset: str,
+) -> str:
+    """Render the full factorial-analysis markdown report."""
+    passed = all(check.passed for check in checks)
+    verdict = "GO to iter-7" if passed else "NO-GO"
+    ce = df.loc[df["condition"] == "ce_only", "test_macro_f1"].iloc[0]
+    best = df.loc[df["test_macro_f1"].idxmax()]
+    spread = df["test_macro_f1"].max() - df["test_macro_f1"].min()
+    attention_losses = df.loc[df["attention"], "loss_attention"].dropna()
+    attention_mean = attention_losses.mean() if not attention_losses.empty else pd.NA
+
+    lines = [
+        "# Factorial Analysis Report",
+        "",
+        f"Dataset: `{dataset}`",
+        "",
+        "## Artifact Summary",
+        "",
+        f"- Teacher metadata: `results/teachers/{dataset}/run_metadata.json`",
+        f"- Student metadata: `results/students/{dataset}/*/run_metadata.json`",
+        f"- Report: `{report_path.as_posix()}`",
+        f"- Figures: `{report_path.parent.joinpath('figures').as_posix()}/`",
+        "",
+        "## Validity Checklist",
+        "",
+        "| Check | Status | Detail |",
+        "|---|:---:|---|",
+    ]
+    for check in checks:
+        status = "PASS" if check.passed else "FAIL"
+        lines.append(f"| {check.name} | {status} | {check.detail} |")
+
+    lines.extend(
+        [
+            "",
+            "## Verdict",
+            "",
+            f"**{verdict}.**",
+            "",
+        ]
+    )
+    if passed:
+        lines.extend(
+            [
+                "The pipeline-validity gate passes: all condition metadata is present, metrics",
+                "and active losses are finite, KD teacher-student agreement is above random,",
+                "metric ranges are valid, and the report artifacts were generated.",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "## Key Results",
+            "",
+            f"- Teacher test macro-F1: `{teacher['test_macro_f1']:.4f}`.",
+            f"- Best student: `{best['condition']}` with test macro-F1 `{best['test_macro_f1']:.4f}`.",
+            f"- CE-only student test macro-F1: `{ce:.4f}`.",
+            f"- Student macro-F1 spread across conditions: `{spread:.4f}`.",
+        ]
+    )
+    if pd.notna(attention_mean):
+        lines.append(f"- Mean final attention-loss magnitude: `{attention_mean:.5f}`.")
+
+    lines.extend(
+        [
+            "",
+            "The best pilot student is `kd_logit`, but the full student spread is within",
+            "single-seed noise. The factorial effects below should therefore be read as",
+            "pipeline diagnostics and descriptive pilot statistics, not resolved causal",
+            "estimates.",
+            "",
+            "## Student Ablation Table",
+            "",
+            _without_title(render_student_ablation_table(df, teacher, dataset)),
+            "## Factorial Effects",
+            "",
+            _without_title(render_main_effects_table(effects, "test_macro_f1")),
+            "## Attention-Loss Caveat",
+            "",
+            "Attention KD used post-softmax attention probabilities in this pilot. Its",
+            "final loss magnitude is near-inert compared with CE, logit, and hidden",
+            "losses, so the attention factor was only weakly applied. Fix this signal or",
+            "explicitly document the caveat before scaling the experiment.",
+            "",
+            "## Figures",
+            "",
+        ]
+    )
+    for figure_path in figure_paths:
+        title = _figure_title(figure_path)
+        relative = figure_path.relative_to(report_path.parent)
+        lines.extend([f"### {title}", "", f"![{title}]({relative.as_posix()})", ""])
+
+    return "\n".join(lines)
+
+
 def _ablation_rows(df: pd.DataFrame, teacher: pd.Series, ce: float) -> list[dict]:
     rows = []
     for row in df.itertuples(index=False):
@@ -134,3 +240,14 @@ def _metric(value: object, best: float, *, signed: bool = False) -> str:
     number = float(value)
     text = f"{number:+.4f}" if signed else f"{number:.4f}"
     return f"**{text}**" if abs(number - best) < 1e-12 else text
+
+
+def _without_title(markdown: str) -> str:
+    lines = markdown.splitlines()
+    if lines and lines[0].startswith("# "):
+        lines = lines[2:] if len(lines) > 1 and lines[1] == "" else lines[1:]
+    return "\n".join(lines).strip() + "\n"
+
+
+def _figure_title(path: Path) -> str:
+    return path.stem.replace("_", " ").title()

@@ -19,7 +19,7 @@ CONDITION_ORDER = [condition.name for condition in ALL_CONDITIONS]
 
 
 def write_all_figures(df: pd.DataFrame, teacher: pd.Series, effects: pd.DataFrame, out_dir: Path) -> list[Path]:
-    """Write all iteration-6 figures as PNG and SVG."""
+    """Write all iteration-6 figures as PNG files."""
     out_dir.mkdir(parents=True, exist_ok=True)
     written = []
     written.extend(plot_condition_bars(df, teacher, out_dir))
@@ -123,8 +123,7 @@ def _ordered(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _save(fig: plt.Figure, stem: Path) -> list[Path]:
-    paths = [stem.with_suffix(".png"), stem.with_suffix(".svg")]
-    for path in paths:
-        fig.savefig(path, dpi=FIGURE_DPI, bbox_inches="tight")
+    path = stem.with_suffix(".png")
+    fig.savefig(path, dpi=FIGURE_DPI, bbox_inches="tight")
     plt.close(fig)
-    return paths
+    return [path]

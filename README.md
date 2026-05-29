@@ -30,7 +30,7 @@ the ablation can be analyzed reproducibly.
 - Granular CE, Logit, Hidden, and Attention KD loss control.
 - Full `2^3` factorial ablation over KD signal combinations.
 - Evaluation for accuracy, calibration, and teacher-student agreement.
-- Reusable analysis, markdown tables, and PNG/SVG visualizations.
+- Reusable analysis, markdown reports, and PNG visualizations.
 
 ## Getting Started
 
@@ -106,12 +106,11 @@ python scripts/06_analyze_factorial.py tweet_eval-sentiment
 
 Generated artifacts:
 
-- `results/analysis/student_ablation_table.md`
-- `results/analysis/main_effects_table.md`
-- `results/analysis/figures/condition_bars.{png,svg}`
-- `results/analysis/figures/main_effects.{png,svg}`
-- `results/analysis/figures/loss_magnitudes.{png,svg}`
-- `results/analysis/figures/calibration.{png,svg}`
+- `results/analysis/factorial_report.md`
+- `results/analysis/figures/condition_bars.png`
+- `results/analysis/figures/main_effects.png`
+- `results/analysis/figures/loss_magnitudes.png`
+- `results/analysis/figures/calibration.png`
 
 The script also prints a pipeline-validity checklist and a GO/NO-GO verdict for
 scaling beyond the pilot dataset.
