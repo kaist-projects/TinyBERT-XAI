@@ -44,16 +44,16 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class TeacherData:
-    tokenizer: "PreTrainedTokenizerBase"
-    train_loader: "DataLoader"
-    dev_loader: "DataLoader"
+    tokenizer: PreTrainedTokenizerBase
+    train_loader: DataLoader
+    dev_loader: DataLoader
     train_size: int
     dev_size: int
 
 
 @dataclass(frozen=True)
 class TeacherModel:
-    model: "PreTrainedModel"
+    model: PreTrainedModel
     optimizer: torch.optim.Optimizer
     parameter_count: int
 

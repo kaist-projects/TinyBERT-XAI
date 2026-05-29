@@ -47,9 +47,9 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class StudentData:
-    tokenizer: "PreTrainedTokenizerBase"
-    train_loader: "DataLoader"
-    dev_loader: "DataLoader"
+    tokenizer: PreTrainedTokenizerBase
+    train_loader: DataLoader
+    dev_loader: DataLoader
     train_size: int
     dev_size: int
 
