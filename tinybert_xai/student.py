@@ -34,8 +34,8 @@ from tinybert_xai.runlog import (
     reproducibility_block,
     write_run_metadata,
 )
-from tinybert_xai.training import RunningMeans, log_epoch, seed_loader, warn_non_finite
-from tinybert_xai.utils import clone_state_dict_cpu, count_params, move_batch_to_device, training_autocast
+from tinybert_xai.training import log_epoch, run_training_epoch
+from tinybert_xai.utils import clone_state_dict_cpu, count_params, training_autocast
 
 if TYPE_CHECKING:
     from torch.utils.data import DataLoader
@@ -275,20 +275,17 @@ def train_student_epoch(
     global_step: int,
     precision: str,
 ) -> StudentEpochStats:
-    epoch_start = time.perf_counter()
     model.train()
     if projections is not None:
         projections.train()
     if teacher_model is not None:
         teacher_model.eval()
 
-    seed_loader(loader, seed, epoch)
-    means = RunningMeans()
-
-    pbar = tqdm(loader, total=len(loader), desc=f"epoch {epoch}", unit="batch")
-    for batch in pbar:
-        batch = move_batch_to_device(batch, device)
-        loss, losses = _student_batch_losses(
+    trainable_params = _trainable_parameters(model, projections)
+    result = run_training_epoch(
+        loader,
+        optimizer,
+        batch_loss_fn=lambda batch: _student_batch_losses(
             model,
             batch,
             cond,
@@ -296,28 +293,21 @@ def train_student_epoch(
             teacher_model=teacher_model,
             device=device,
             precision=precision,
-        )
-
-        if not torch.isfinite(loss):
-            warn_non_finite(pbar, epoch, global_step, loss)
-            optimizer.zero_grad()
-            continue
-
-        loss.backward()
-        grad_norm = torch.nn.utils.clip_grad_norm_(_trainable_parameters(model, projections), max_norm=float("inf"))
-        optimizer.step()
-        optimizer.zero_grad()
-
-        means.add({"loss_total": loss.item(), "grad_norm": grad_norm.item(), **losses})
-        global_step += 1
-        pbar.set_postfix(loss=f"{loss.item():.4f}")
+        ),
+        parameters=trainable_params,
+        device=device,
+        seed=seed,
+        epoch=epoch,
+        global_step=global_step,
+        progress_factory=tqdm,
+    )
 
     return StudentEpochStats(
-        loss_total_mean=means.mean("loss_total"),
-        loss_means={name: value for name, value in means.means().items() if name not in ("loss_total", "grad_norm")},
-        grad_norm_mean=means.mean("grad_norm"),
-        global_step=global_step,
-        epoch_time_seconds=time.perf_counter() - epoch_start,
+        loss_total_mean=result.stats.loss.total,
+        loss_means=result.stats.loss.component_means(),
+        grad_norm_mean=result.stats.grad_norm_mean,
+        global_step=result.global_step,
+        epoch_time_seconds=result.epoch_time_seconds,
     )
 
 

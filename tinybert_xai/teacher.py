@@ -31,8 +31,8 @@ from tinybert_xai.runlog import (
     reproducibility_block,
     write_run_metadata,
 )
-from tinybert_xai.training import RunningMeans, log_epoch, seed_loader, warn_non_finite
-from tinybert_xai.utils import clone_state_dict_cpu, count_params, move_batch_to_device, training_autocast
+from tinybert_xai.training import log_epoch, run_training_epoch
+from tinybert_xai.utils import clone_state_dict_cpu, count_params, training_autocast
 
 if TYPE_CHECKING:
     from torch.utils.data import DataLoader
@@ -250,37 +250,31 @@ def train_teacher_epoch(
     global_step: int,
     precision: str,
 ) -> TeacherEpochStats:
-    epoch_start = time.perf_counter()
     model.train()
 
-    seed_loader(loader, seed, epoch)
-    means = RunningMeans()
-
-    pbar = tqdm(loader, total=len(loader), desc=f"epoch {epoch}", unit="batch")
-    for batch in pbar:
-        batch = move_batch_to_device(batch, device)
-        loss = _teacher_batch_loss(model, batch, device=device, precision=precision)
-
-        if not torch.isfinite(loss):
-            warn_non_finite(pbar, epoch, global_step, loss)
-            optimizer.zero_grad()
-            continue
-
-        loss.backward()
-        grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float("inf"))
-        optimizer.step()
-        optimizer.zero_grad()
-
-        means.add({"loss": loss.item(), "grad_norm": grad_norm.item()})
-        global_step += 1
-        pbar.set_postfix(loss=f"{loss.item():.4f}")
+    result = run_training_epoch(
+        loader,
+        optimizer,
+        batch_loss_fn=lambda batch: _teacher_batch_loss_with_components(
+            model,
+            batch,
+            device=device,
+            precision=precision,
+        ),
+        parameters=list(model.parameters()),
+        device=device,
+        seed=seed,
+        epoch=epoch,
+        global_step=global_step,
+        progress_factory=tqdm,
+    )
 
     return TeacherEpochStats(
-        loss_total_mean=means.mean("loss"),
-        loss_ce_mean=means.mean("loss"),
-        grad_norm_mean=means.mean("grad_norm"),
-        global_step=global_step,
-        epoch_time_seconds=time.perf_counter() - epoch_start,
+        loss_total_mean=result.stats.loss.total,
+        loss_ce_mean=result.stats.loss.ce,
+        grad_norm_mean=result.stats.grad_norm_mean,
+        global_step=result.global_step,
+        epoch_time_seconds=result.epoch_time_seconds,
     )
 
 
@@ -359,6 +353,17 @@ def _teacher_batch_loss(
     if out.loss is None:
         raise RuntimeError("Teacher batch must include labels so the model returns CE loss")
     return out.loss
+
+
+def _teacher_batch_loss_with_components(
+    model: "PreTrainedModel",
+    batch: dict[str, torch.Tensor],
+    *,
+    device: str,
+    precision: str,
+) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    loss = _teacher_batch_loss(model, batch, device=device, precision=precision)
+    return loss, {"ce": loss}
 
 
 def _build_eval_loaders(
