@@ -9,7 +9,8 @@ Usage
 -----
     conda activate tinybert-xai
     # from repo root
-    python scripts/02b_eval_student.py kd_attn
+    python scripts/02b_eval_student.py --logit --attention   # condition kd_logit_attn
+    python scripts/02b_eval_student.py                        # no flags -> ce_only
 
 Writes
 ------
@@ -18,15 +19,16 @@ Writes
 
 from __future__ import annotations
 
+import argparse
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from tinybert_xai import (  # noqa: E402
-    CONDITIONS_BY_NAME,
     DATASET_TWEETEVAL_SENTIMENT,
     Config,
+    condition_from_flags,
     configure_reproducibility,
     evaluate_saved_student,
     load_classifier,
@@ -37,10 +39,19 @@ from tinybert_xai import (  # noqa: E402
 )
 
 
+def parse_condition() -> "ConditionSpec":
+    parser = argparse.ArgumentParser(description="Evaluate a trained TinyBERT student for one distillation condition.")
+    parser.add_argument("--logit", action="store_true", help="enable logit distillation")
+    parser.add_argument("--hidden", action="store_true", help="enable hidden-state distillation")
+    parser.add_argument("--attention", action="store_true", help="enable attention distillation")
+    args = parser.parse_args()
+    return condition_from_flags(args.logit, args.hidden, args.attention)
+
+
 def main() -> None:
     cfg = Config()
     spec = DATASET_TWEETEVAL_SENTIMENT
-    cond = CONDITIONS_BY_NAME[sys.argv[1] if len(sys.argv) > 1 else "kd_attn"]
+    cond = parse_condition()
 
     configure_reproducibility(cfg.seed)
     device = resolve_device(cfg)

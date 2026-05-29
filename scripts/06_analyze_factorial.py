@@ -18,7 +18,7 @@ from tinybert_xai.analysis.plots import write_all_figures  # noqa: E402
 from tinybert_xai.analysis.tables import (  # noqa: E402
     render_factorial_report,
 )
-from tinybert_xai.conditions import ALL_CONDITIONS  # noqa: E402
+from tinybert_xai.conditions import all_conditions  # noqa: E402
 
 ANALYSIS_DIR = pathlib.Path("results") / "analysis"
 FIGURES_DIR = ANALYSIS_DIR / "figures"
@@ -115,7 +115,7 @@ def _validate_inputs(df: pd.DataFrame) -> list[Check]:
 
 
 def _check_conditions_present(df: pd.DataFrame) -> Check:
-    expected = {condition.name for condition in ALL_CONDITIONS}
+    expected = {condition.name for condition in all_conditions()}
     present = set(df["condition"])
     frame = df.loc[df["condition"].isin(expected)]
     valid = frame["valid"].fillna(False).astype(bool)

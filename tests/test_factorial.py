@@ -7,12 +7,12 @@ from tinybert_xai.analysis.factorial import (
     interaction_3way,
     main_effect,
 )
-from tinybert_xai.conditions import ALL_CONDITIONS
+from tinybert_xai.conditions import all_conditions
 
 
 def _frame(values):
     rows = []
-    for condition in ALL_CONDITIONS:
+    for condition in all_conditions():
         rows.append(
             {
                 "condition": condition.name,
@@ -52,7 +52,7 @@ def test_factorial_effects_match_hand_computed_values():
 
 
 def test_degenerate_equal_cells_have_zero_effects():
-    df = _frame({condition.name: 0.5 for condition in ALL_CONDITIONS})
+    df = _frame({condition.name: 0.5 for condition in all_conditions()})
     table = effects_table(df, "metric")
 
     assert table["estimate"].abs().max() == pytest.approx(0.0)

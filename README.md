@@ -75,21 +75,23 @@ Expected artifacts:
 
 ### Student Distillation
 
-Train one student condition:
+Train one student condition by toggling distillation signals with flags
+(`--logit`, `--hidden`, `--attention`); no flags means the `ce_only` baseline:
 
 ```bash
-python scripts/02_train_student.py kd_logit
+python scripts/02_train_student.py --logit
 ```
 
-Evaluate the saved student and patch its metadata:
+Evaluate the saved student and patch its metadata (same flags select the run):
 
 ```bash
-python scripts/02b_eval_student.py kd_logit
+python scripts/02b_eval_student.py --logit
 ```
 
-Replace `kd_logit` with any condition listed in the experimental conditions
-table below. KD conditions require the teacher checkpoint produced by the
-teacher fine-tuning step.
+Combine flags for any of the 8 conditions in the experimental conditions table
+below — e.g. `--logit --attention` is `kd_logit_attn`, `--logit --hidden
+--attention` is `kd_full`. KD conditions require the teacher checkpoint produced
+by the teacher fine-tuning step.
 
 Expected artifacts:
 

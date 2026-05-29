@@ -1,41 +1,61 @@
-"""Typed student distillation condition definitions."""
+"""Typed student distillation condition definitions.
+
+A condition is fully determined by three boolean signal flags
+(logit / hidden / attention). The canonical ``kd_*`` name and the full 2**3
+factorial set are *derived* from those flags -- there are no named constants
+and no name->signal lookup table. Flags are the sole source of truth.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import product
+
+SIGNAL_NAMES = ("logit", "hidden", "attention")
+# Tokens used to build the canonical condition name (attention is abbreviated).
+_NAME_TOKENS = ("logit", "hidden", "attn")
 
 
 @dataclass(frozen=True)
 class ConditionSpec:
-    name: str
     logit: bool
     hidden: bool
     attention: bool
 
     @property
+    def name(self) -> str:
+        active = [token for token, on in zip(_NAME_TOKENS, self._flags) if on]
+        if not active:
+            return "ce_only"
+        if len(active) == len(_NAME_TOKENS):
+            return "kd_full"
+        return "kd_" + "_".join(active)
+
+    @property
     def uses_teacher(self) -> bool:
-        return self.logit or self.hidden or self.attention
+        return any(self._flags)
+
+    @property
+    def _flags(self) -> tuple[bool, bool, bool]:
+        return (self.logit, self.hidden, self.attention)
 
 
-CE_ONLY = ConditionSpec("ce_only", False, False, False)
-KD_LOGIT = ConditionSpec("kd_logit", True, False, False)
-KD_HIDDEN = ConditionSpec("kd_hidden", False, True, False)
-KD_ATTN = ConditionSpec("kd_attn", False, False, True)
-KD_LOGIT_HIDDEN = ConditionSpec("kd_logit_hidden", True, True, False)
-KD_LOGIT_ATTN = ConditionSpec("kd_logit_attn", True, False, True)
-KD_HIDDEN_ATTN = ConditionSpec("kd_hidden_attn", False, True, True)
-KD_FULL = ConditionSpec("kd_full", True, True, True)
+def condition_from_flags(logit: bool, hidden: bool, attention: bool) -> ConditionSpec:
+    """Build a condition from the three signal flags."""
+    return ConditionSpec(logit=logit, hidden=hidden, attention=attention)
 
 
-ALL_CONDITIONS = (
-    CE_ONLY,
-    KD_LOGIT,
-    KD_HIDDEN,
-    KD_ATTN,
-    KD_LOGIT_HIDDEN,
-    KD_LOGIT_ATTN,
-    KD_HIDDEN_ATTN,
-    KD_FULL,
-)
+def all_conditions() -> tuple[ConditionSpec, ...]:
+    """Generate the full 2**3 factorial of conditions in canonical order.
 
-CONDITIONS_BY_NAME = {condition.name: condition for condition in ALL_CONDITIONS}
+    Order is by number of active signals, then by signal index, reproducing
+    ``ce_only, kd_logit, kd_hidden, kd_attn, kd_logit_hidden, kd_logit_attn,
+    kd_hidden_attn, kd_full``.
+    """
+    specs = [ConditionSpec(*flags) for flags in product((False, True), repeat=len(SIGNAL_NAMES))]
+    return tuple(sorted(specs, key=_canonical_order_key))
+
+
+def _canonical_order_key(spec: ConditionSpec) -> tuple[int, tuple[int, ...]]:
+    active_indices = tuple(index for index, on in enumerate(spec._flags) if on)
+    return (len(active_indices), active_indices)

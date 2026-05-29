@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from tinybert_xai.conditions import ALL_CONDITIONS, CONDITIONS_BY_NAME
+from tinybert_xai.conditions import ConditionSpec, all_conditions
 
 RESULTS_ROOT = Path("results")
 METRIC_COLUMNS = (
@@ -39,14 +39,14 @@ def load_runs(dataset_name: str, results_root: Path | str = RESULTS_ROOT) -> pd.
     """
     root = Path(results_root)
     rows = []
-    for condition in ALL_CONDITIONS:
+    for condition in all_conditions():
         metadata_path = root / "students" / dataset_name / condition.name / "run_metadata.json"
         try:
             with open(metadata_path) as f:
                 payload = json.load(f)
-            rows.append(_student_row(dataset_name, condition.name, payload, metadata_path))
+            rows.append(_student_row(dataset_name, condition, payload, metadata_path))
         except Exception as exc:  # noqa: BLE001 - keep validation report complete.
-            rows.append(_invalid_row(dataset_name, condition.name, metadata_path, str(exc)))
+            rows.append(_invalid_row(dataset_name, condition, metadata_path, str(exc)))
     return pd.DataFrame(rows)
 
 
@@ -87,19 +87,18 @@ def load_teacher(dataset_name: str, results_root: Path | str = RESULTS_ROOT) -> 
     )
 
 
-def _student_row(dataset_name: str, condition_name: str, payload: dict, path: Path) -> dict:
-    condition = CONDITIONS_BY_NAME[condition_name]
+def _student_row(dataset_name: str, condition: ConditionSpec, payload: dict, path: Path) -> dict:
     test = payload.get("metrics", {}).get("test", {})
     dev = payload.get("metrics", {}).get("dev", {})
     analysis = test.get("teacher_student_analysis", {})
     final_losses = _final_losses(payload)
     metadata_condition = payload.get("run", {}).get("condition")
-    valid = metadata_condition == condition_name
+    valid = metadata_condition == condition.name
     error = None if valid else f"metadata condition is {metadata_condition!r}"
 
     return {
         "dataset": dataset_name,
-        "condition": condition_name,
+        "condition": condition.name,
         "logit": condition.logit,
         "hidden": condition.hidden,
         "attention": condition.attention,
@@ -129,11 +128,10 @@ def _student_row(dataset_name: str, condition_name: str, payload: dict, path: Pa
     }
 
 
-def _invalid_row(dataset_name: str, condition_name: str, path: Path, error: str) -> dict:
-    condition = CONDITIONS_BY_NAME[condition_name]
+def _invalid_row(dataset_name: str, condition: ConditionSpec, path: Path, error: str) -> dict:
     row = {
         "dataset": dataset_name,
-        "condition": condition_name,
+        "condition": condition.name,
         "logit": condition.logit,
         "hidden": condition.hidden,
         "attention": condition.attention,

@@ -6,10 +6,10 @@ from itertools import combinations
 
 import pandas as pd
 
-from tinybert_xai.conditions import ALL_CONDITIONS
+from tinybert_xai.conditions import all_conditions
 
 FACTORS = ("logit", "hidden", "attention")
-_EXPECTED_CONDITIONS = {condition.name for condition in ALL_CONDITIONS}
+_EXPECTED_CONDITIONS = {condition.name for condition in all_conditions()}
 
 
 def main_effect(df: pd.DataFrame, factor: str, metric: str) -> float:

@@ -7,17 +7,9 @@ from tinybert_xai.checkpoints import (
 )
 from tinybert_xai.config import Config
 from tinybert_xai.conditions import (
-    ALL_CONDITIONS,
-    CE_ONLY,
-    CONDITIONS_BY_NAME,
-    KD_ATTN,
-    KD_FULL,
-    KD_HIDDEN,
-    KD_HIDDEN_ATTN,
-    KD_LOGIT,
-    KD_LOGIT_ATTN,
-    KD_LOGIT_HIDDEN,
     ConditionSpec,
+    all_conditions,
+    condition_from_flags,
 )
 from tinybert_xai.datasets import (
     DATASET_TWEETEVAL_SENTIMENT,
@@ -96,16 +88,8 @@ __all__ = [
     "load_split",
     # conditions
     "ConditionSpec",
-    "CE_ONLY",
-    "KD_LOGIT",
-    "KD_HIDDEN",
-    "KD_ATTN",
-    "KD_LOGIT_HIDDEN",
-    "KD_LOGIT_ATTN",
-    "KD_HIDDEN_ATTN",
-    "KD_FULL",
-    "ALL_CONDITIONS",
-    "CONDITIONS_BY_NAME",
+    "condition_from_flags",
+    "all_conditions",
     # eval
     "EvaluationResult",
     "TeacherStudentAnalysis",

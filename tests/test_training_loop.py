@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from tinybert_xai import CE_ONLY
+from tinybert_xai import condition_from_flags
 from tinybert_xai.student import train_student_epoch
 from tinybert_xai.teacher import train_teacher_epoch
 from tinybert_xai.training import TrainStats
@@ -46,7 +46,7 @@ def test_train_student_epoch_averages_valid_batches_and_skips_nonfinite():
         model,
         _loader(),
         optimizer,
-        CE_ONLY,
+        condition_from_flags(False, False, False),
         projections=None,
         teacher_model=None,
         device="cpu",

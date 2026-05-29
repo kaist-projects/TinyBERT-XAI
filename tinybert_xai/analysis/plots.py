@@ -12,10 +12,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-from tinybert_xai.conditions import ALL_CONDITIONS
+from tinybert_xai.conditions import all_conditions
 
 FIGURE_DPI = 180
-CONDITION_ORDER = [condition.name for condition in ALL_CONDITIONS]
+CONDITION_ORDER = [condition.name for condition in all_conditions()]
 
 
 def write_all_figures(df: pd.DataFrame, teacher: pd.Series, effects: pd.DataFrame, out_dir: Path) -> list[Path]:

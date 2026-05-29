@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import torch
 
-from tinybert_xai import KD_HIDDEN
+from tinybert_xai import condition_from_flags
 from tinybert_xai.student import prepare_student_model
 
 
@@ -20,7 +20,7 @@ def test_prepare_student_model_adds_hidden_projections_to_optimizer(monkeypatch)
     cfg = SimpleNamespace(student_checkpoint="student", learning_rate=2e-5)
     spec = SimpleNamespace(num_labels=2)
 
-    student = prepare_student_model(cfg, spec, KD_HIDDEN, "cpu")
+    student = prepare_student_model(cfg, spec, condition_from_flags(False, True, False), "cpu")
 
     assert student.projections is not None
     optimizer_param_ids = {id(param) for group in student.optimizer.param_groups for param in group["params"]}

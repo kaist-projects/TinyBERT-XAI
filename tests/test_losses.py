@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from tinybert_xai import KD_ATTN, KD_FULL, KD_HIDDEN, KD_LOGIT, KD_LOGIT_HIDDEN
+from tinybert_xai import condition_from_flags
 from tinybert_xai.losses import attention_kd_loss, compute_student_losses, hidden_kd_loss, logit_kd_loss
 from tinybert_xai.projections import HiddenProjection
 
@@ -42,7 +42,7 @@ def test_compute_student_losses_adds_logit_component_for_kd_logit():
     )
     teacher_out = SimpleNamespace(logits=torch.tensor([[0.0, 2.0]]))
 
-    total, losses = compute_student_losses(student_out, teacher_out, KD_LOGIT)
+    total, losses = compute_student_losses(student_out, teacher_out, condition_from_flags(True, False, False))
 
     assert losses.keys() == {"ce", "logit"}
     assert total.item() == pytest.approx(losses["ce"] + losses["logit"])
@@ -108,7 +108,7 @@ def test_compute_student_losses_adds_hidden_component_for_kd_hidden():
     total, losses = compute_student_losses(
         student_out,
         teacher_out,
-        KD_HIDDEN,
+        condition_from_flags(False, True, False),
         projections=projections,
         attention_mask=torch.ones(1, 2),
     )
@@ -135,7 +135,7 @@ def test_compute_student_losses_supports_logit_hidden_condition():
     total, losses = compute_student_losses(
         student_out,
         teacher_out,
-        KD_LOGIT_HIDDEN,
+        condition_from_flags(True, True, False),
         projections=projections,
         attention_mask=torch.ones(1, 2),
     )
@@ -202,7 +202,7 @@ def test_compute_student_losses_adds_attention_component_for_kd_attn():
     total, losses = compute_student_losses(
         student_out,
         teacher_out,
-        KD_ATTN,
+        condition_from_flags(False, False, True),
         attention_mask=torch.ones(1, 2),
     )
 
@@ -230,7 +230,7 @@ def test_compute_student_losses_supports_full_condition():
     total, losses = compute_student_losses(
         student_out,
         teacher_out,
-        KD_FULL,
+        condition_from_flags(True, True, True),
         projections=projections,
         attention_mask=torch.ones(1, 2),
     )
