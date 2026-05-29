@@ -90,8 +90,6 @@ def render_factorial_report(
     dataset: str,
 ) -> str:
     """Render the full factorial-analysis markdown report."""
-    passed = all(check.passed for check in checks)
-    verdict = "GO to iter-7" if passed else "NO-GO"
     ce = df.loc[df["condition"] == "ce_only", "test_macro_f1"].iloc[0]
     best = df.loc[df["test_macro_f1"].idxmax()]
     spread = df["test_macro_f1"].max() - df["test_macro_f1"].min()
@@ -122,24 +120,6 @@ def render_factorial_report(
     lines.extend(
         [
             "",
-            "## Verdict",
-            "",
-            f"**{verdict}.**",
-            "",
-        ]
-    )
-    if passed:
-        lines.extend(
-            [
-                "The pipeline-validity gate passes: all condition metadata is present, metrics",
-                "and active losses are finite, KD teacher-student agreement is above random,",
-                "metric ranges are valid, and the report artifacts were generated.",
-                "",
-            ]
-        )
-
-    lines.extend(
-        [
             "## Key Results",
             "",
             f"- Teacher test macro-F1: `{teacher['test_macro_f1']:.4f}`.",

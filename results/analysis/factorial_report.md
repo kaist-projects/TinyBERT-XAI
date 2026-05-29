@@ -20,14 +20,6 @@ Dataset: `tweet_eval-sentiment`
 | metric ranges | PASS | F1/accuracy/agreement/ECE values are within [0, 1] |
 | artifacts written | PASS | 4 PNG figures and 1 markdown report written |
 
-## Verdict
-
-**GO to iter-7.**
-
-The pipeline-validity gate passes: all condition metadata is present, metrics
-and active losses are finite, KD teacher-student agreement is above random,
-metric ranges are valid, and the report artifacts were generated.
-
 ## Key Results
 
 - Teacher test macro-F1: `0.6870`.
