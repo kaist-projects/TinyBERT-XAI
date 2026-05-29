@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -95,6 +96,7 @@ def render_factorial_report(
     spread = df["test_macro_f1"].max() - df["test_macro_f1"].min()
     attention_losses = df.loc[df["attention"], "loss_attention"].dropna()
     attention_mean = attention_losses.mean() if not attention_losses.empty else pd.NA
+    figures_dir = _relative_path(figure_paths[0].parent, report_path.parent) if figure_paths else Path("figures")
 
     lines = [
         "# Factorial Analysis Report",
@@ -106,7 +108,7 @@ def render_factorial_report(
         f"- Teacher metadata: `results/teachers/{dataset}/run_metadata.json`",
         f"- Student metadata: `results/students/{dataset}/*/run_metadata.json`",
         f"- Report: `{report_path.as_posix()}`",
-        f"- Figures: `{report_path.parent.joinpath('figures').as_posix()}/`",
+        f"- Figures: `{figures_dir.as_posix()}/`",
         "",
         "## Validity Checklist",
         "",
@@ -158,7 +160,7 @@ def render_factorial_report(
     )
     for figure_path in figure_paths:
         title = _figure_title(figure_path)
-        relative = figure_path.relative_to(report_path.parent)
+        relative = _relative_path(figure_path, report_path.parent)
         lines.extend([f"### {title}", "", f"![{title}]({relative.as_posix()})", ""])
 
     return "\n".join(lines)
@@ -231,3 +233,7 @@ def _without_title(markdown: str) -> str:
 
 def _figure_title(path: Path) -> str:
     return path.stem.replace("_", " ").title()
+
+
+def _relative_path(path: Path, start: Path) -> Path:
+    return Path(os.path.relpath(path, start))

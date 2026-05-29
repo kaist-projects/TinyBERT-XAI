@@ -6,7 +6,7 @@ Dataset: `tweet_eval-sentiment`
 
 - Teacher metadata: `results/teachers/tweet_eval-sentiment/run_metadata.json`
 - Student metadata: `results/students/tweet_eval-sentiment/*/run_metadata.json`
-- Report: `results/analysis/factorial_report.md`
+- Report: `REPORT.md`
 - Figures: `results/analysis/figures/`
 
 ## Validity Checklist
@@ -90,16 +90,16 @@ explicitly document the caveat before scaling the experiment.
 
 ### Condition Bars
 
-![Condition Bars](figures/condition_bars.png)
+![Condition Bars](results/analysis/figures/condition_bars.png)
 
 ### Main Effects
 
-![Main Effects](figures/main_effects.png)
+![Main Effects](results/analysis/figures/main_effects.png)
 
 ### Loss Magnitudes
 
-![Loss Magnitudes](figures/loss_magnitudes.png)
+![Loss Magnitudes](results/analysis/figures/loss_magnitudes.png)
 
 ### Calibration
 
-![Calibration](figures/calibration.png)
+![Calibration](results/analysis/figures/calibration.png)

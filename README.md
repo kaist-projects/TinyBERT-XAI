@@ -106,7 +106,7 @@ python scripts/06_analyze_factorial.py tweet_eval-sentiment
 
 Generated artifacts:
 
-- `results/analysis/factorial_report.md`
+- `REPORT.md`
 - `results/analysis/figures/condition_bars.png`
 - `results/analysis/figures/main_effects.png`
 - `results/analysis/figures/loss_magnitudes.png`

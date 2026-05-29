@@ -22,7 +22,7 @@ from tinybert_xai.conditions import ALL_CONDITIONS  # noqa: E402
 
 ANALYSIS_DIR = pathlib.Path("results") / "analysis"
 FIGURES_DIR = ANALYSIS_DIR / "figures"
-REPORT_PATH = ANALYSIS_DIR / "factorial_report.md"
+REPORT_PATH = pathlib.Path("REPORT.md")
 METRIC_COLUMNS = [
     "test_macro_f1",
     "test_micro_f1",
@@ -95,6 +95,7 @@ def _write_report(
 
 def _remove_stale_artifacts() -> None:
     for path in [
+        ANALYSIS_DIR / "factorial_report.md",
         ANALYSIS_DIR / "student_ablation_table.md",
         ANALYSIS_DIR / "main_effects_table.md",
     ]:
@@ -203,6 +204,7 @@ def _check_artifacts(figures: list[pathlib.Path], report: pathlib.Path) -> Check
     stale_tables = [
         str(path)
         for path in [
+            ANALYSIS_DIR / "factorial_report.md",
             ANALYSIS_DIR / "student_ablation_table.md",
             ANALYSIS_DIR / "main_effects_table.md",
         ]
