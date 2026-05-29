@@ -1,7 +1,7 @@
 {
   "schema_version": "2",
   "run": {
-    "run_id": "student-ce_only-tweet_eval-sentiment-2026-05-28T13:16:01Z",
+    "run_id": "student-ce_only-tweet_eval-sentiment-2026-05-29T11:01:23Z",
     "stage": "student",
     "condition": "ce_only"
   },
@@ -16,8 +16,7 @@
     ],
     "splits": {
       "train": 45615,
-      "validation": 2000,
-      "test": 12284
+      "validation": 2000
     },
     "max_seq_length": 128,
     "truncation": true,
@@ -63,12 +62,12 @@
   },
   "training": {
     "epochs_completed": 3,
-    "train_time_seconds": 283.65328,
+    "train_time_seconds": 339.13837,
     "history": [
       {
         "epoch": 0,
         "global_step": 2851,
-        "epoch_time_seconds": 97.90392,
+        "epoch_time_seconds": 115.66519,
         "loss_total": 0.72191,
         "losses": {
           "ce": 0.72191
@@ -86,7 +85,7 @@
       {
         "epoch": 1,
         "global_step": 5702,
-        "epoch_time_seconds": 99.85519,
+        "epoch_time_seconds": 124.05013,
         "loss_total": 0.61849,
         "losses": {
           "ce": 0.61849
@@ -104,7 +103,7 @@
       {
         "epoch": 2,
         "global_step": 8553,
-        "epoch_time_seconds": 84.09382,
+        "epoch_time_seconds": 97.65138,
         "loss_total": 0.55561,
         "losses": {
           "ce": 0.55561
@@ -121,41 +120,5 @@
       }
     ]
   },
-  "metrics": {
-    "dev": {
-      "macro_f1": 0.69481,
-      "micro_f1": 0.7135,
-      "accuracy": 0.7135,
-      "per_class_f1": [0.62587, 0.66667, 0.79191],
-      "confusion_matrix": [
-        [225, 66, 21],
-        [147, 517, 205],
-        [35, 99, 685]
-      ],
-      "ECE": 0.05074,
-      "NLL": 0.67388,
-      "Brier": 0.40027
-    },
-    "test": {
-      "macro_f1": 0.65915,
-      "micro_f1": 0.6576,
-      "accuracy": 0.6576,
-      "per_class_f1": [0.70423, 0.61731, 0.65592],
-      "confusion_matrix": [
-        [3156, 619, 197],
-        [1708, 3131, 1098],
-        [127, 457, 1791]
-      ],
-      "ECE": 0.07887,
-      "NLL": 0.75112,
-      "Brier": 0.4609,
-      "teacher_student_analysis": {
-        "top1_agreement": 0.78655,
-        "teacher_student_kl": 0.16384,
-        "teacher_correct_student_wrong": 1355,
-        "teacher_wrong_student_correct": 988,
-        "error_copying": 0.90214
-      }
-    }
-  }
+  "metrics": {}
 }

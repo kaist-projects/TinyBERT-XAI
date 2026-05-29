@@ -1,7 +1,7 @@
 {
   "schema_version": "2",
   "run": {
-    "run_id": "student-kd_attn-tweet_eval-sentiment-2026-05-28T15:33:20Z",
+    "run_id": "student-kd_attn-tweet_eval-sentiment-2026-05-29T10:32:13Z",
     "stage": "student",
     "condition": "kd_attn"
   },
@@ -64,12 +64,12 @@
   },
   "training": {
     "epochs_completed": 3,
-    "train_time_seconds": 447.45697,
+    "train_time_seconds": 425.3871,
     "history": [
       {
         "epoch": 0,
         "global_step": 2851,
-        "epoch_time_seconds": 147.90737,
+        "epoch_time_seconds": 136.07735,
         "loss_total": 0.72522,
         "losses": {
           "ce": 0.72086,
@@ -88,7 +88,7 @@
       {
         "epoch": 1,
         "global_step": 5702,
-        "epoch_time_seconds": 150.34893,
+        "epoch_time_seconds": 140.0702,
         "loss_total": 0.62152,
         "losses": {
           "ce": 0.61713,
@@ -107,7 +107,7 @@
       {
         "epoch": 2,
         "global_step": 8553,
-        "epoch_time_seconds": 147.52076,
+        "epoch_time_seconds": 147.48899,
         "loss_total": 0.5589,
         "losses": {
           "ce": 0.55431,
