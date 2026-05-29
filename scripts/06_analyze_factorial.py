@@ -114,6 +114,11 @@ def _check_conditions_present(df: pd.DataFrame) -> Check:
     return Check("all 8 conditions present and valid", passed, detail)
 
 
+def _check_from_failures(name: str, failures: list[str], ok_detail: str) -> Check:
+    detail = ", ".join(failures) if failures else ok_detail
+    return Check(name, not failures, detail)
+
+
 def _check_epochs(df: pd.DataFrame) -> Check:
     failures = []
     for row in df.itertuples(index=False):
@@ -123,11 +128,9 @@ def _check_epochs(df: pd.DataFrame) -> Check:
             not _finite(row.epochs_completed) or row.epochs_completed != expected_epochs
         ):
             failures.append(f"{row.condition}={row.epochs_completed}/{expected_epochs}")
-    passed = not failures
-    detail = "all runs completed configured epochs or documented early-stop"
-    if failures:
-        detail = ", ".join(failures)
-    return Check("epochs completed", passed, detail)
+    return _check_from_failures(
+        "epochs completed", failures, "all runs completed configured epochs or documented early-stop"
+    )
 
 
 def _check_finite_recorded_values(df: pd.DataFrame) -> Check:
@@ -139,11 +142,9 @@ def _check_finite_recorded_values(df: pd.DataFrame) -> Check:
         for loss_name, column in LOSS_BY_FACTOR.items():
             if _loss_required(row, loss_name) and not _finite(getattr(row, column)):
                 failures.append(f"{row.condition}.{column}")
-    passed = not failures
-    detail = "all required metrics and active losses are finite"
-    if failures:
-        detail = ", ".join(failures)
-    return Check("finite metrics/losses", passed, detail)
+    return _check_from_failures(
+        "finite metrics/losses", failures, "all required metrics and active losses are finite"
+    )
 
 
 def _check_teacher_forward(df: pd.DataFrame) -> Check:
@@ -156,11 +157,9 @@ def _check_teacher_forward(df: pd.DataFrame) -> Check:
         baseline = 1.0 / float(row.num_labels)
         if not _finite(row.top1_agreement) or row.top1_agreement <= baseline:
             failures.append(f"{row.condition}.top1_agreement={row.top1_agreement}")
-    passed = not failures
-    detail = "top1_agreement is present and above random for every KD condition"
-    if failures:
-        detail = ", ".join(failures)
-    return Check("teacher forward sane", passed, detail)
+    return _check_from_failures(
+        "teacher forward sane", failures, "top1_agreement is present and above random for every KD condition"
+    )
 
 
 def _check_metric_ranges(df: pd.DataFrame) -> Check:
@@ -179,11 +178,9 @@ def _check_metric_ranges(df: pd.DataFrame) -> Check:
                 continue
             if value < 0.0 or value > 1.0:
                 failures.append(f"{row.condition}.{column}={value}")
-    passed = not failures
-    detail = "F1/accuracy/agreement/ECE values are within [0, 1]"
-    if failures:
-        detail = ", ".join(failures)
-    return Check("metric ranges", passed, detail)
+    return _check_from_failures(
+        "metric ranges", failures, "F1/accuracy/agreement/ECE values are within [0, 1]"
+    )
 
 
 def _check_artifacts(figures: list[pathlib.Path], tables: list[pathlib.Path]) -> Check:
@@ -228,9 +225,10 @@ def _print_report(
     for row in effects.itertuples(index=False):
         print(f"  {row.effect:28s} {row.estimate:+.5f}")
 
-    verdict = "GO to iter-7" if all(check.passed for check in checks) else "NO-GO"
+    passed = all(check.passed for check in checks)
+    verdict = "GO to iter-7" if passed else "NO-GO"
     print(f"\nVerdict: {verdict}")
-    if all(check.passed for check in checks):
+    if passed:
         print(
             "Rationale: pipeline-validity checks pass; single-seed effect sizes are "
             "informational only. Attention KD is near-inert by final-loss magnitude "

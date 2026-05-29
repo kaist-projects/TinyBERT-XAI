@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import pandas as pd
 
-from tinybert_xai.conditions import CONDITIONS_BY_NAME
-
 
 def render_student_ablation_table(df: pd.DataFrame, teacher: pd.Series, dataset: str) -> str:
     """Render the condition table used in the project notes."""
@@ -113,13 +111,8 @@ def _ablation_rows(df: pd.DataFrame, teacher: pd.Series, ce: float) -> list[dict
 
 
 def _format_ablation_row(row: dict, best: dict) -> str:
-    condition = row["condition"]
-    if condition in CONDITIONS_BY_NAME:
-        condition_text = f"`{condition}`"
-    else:
-        condition_text = f"`{condition}`"
     return (
-        f"| {condition_text} | {_flag(row['logit'])} | {_flag(row['hidden'])} | "
+        f"| `{row['condition']}` | {_flag(row['logit'])} | {_flag(row['hidden'])} | "
         f"{_flag(row['attention'])} | "
         f"{_metric(row['test_macro_f1'], best['test_macro_f1'])} | "
         f"{_metric(row['delta'], best['delta'], signed=True)} | "
