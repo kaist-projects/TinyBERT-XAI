@@ -1,0 +1,127 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "teacher-fever-2026-05-30T09:21:07Z",
+    "stage": "teacher",
+    "condition": null
+  },
+  "dataset": {
+    "name": "pietrolesci/nli_fever",
+    "config": null,
+    "num_labels": 3,
+    "label_names": [
+      "entailment",
+      "neutral",
+      "contradiction"
+    ],
+    "input_type": "sentence_pair",
+    "split_scheme": "stratified_test_0.1_sub50000_seed42",
+    "source_fingerprint": null,
+    "splits": {
+      "train": 45000,
+      "validation": 19998
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "checkpoint": "bert-base-uncased",
+    "tokenizer": "bert-base-uncased",
+    "parameter_count": 109484547
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 2,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/teachers/fever/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24118.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 790.46834,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 2813,
+        "epoch_time_seconds": 245.75623,
+        "loss_total": 0.46119,
+        "losses": {
+          "ce": 0.46119
+        },
+        "grad_norm_mean": 7.34549,
+        "dev": {
+          "macro_f1": 0.69391,
+          "micro_f1": 0.70272,
+          "accuracy": 0.70272,
+          "ECE": 0.1013,
+          "NLL": 0.80952,
+          "Brier": 0.43846
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 5626,
+        "epoch_time_seconds": 211.88193,
+        "loss_total": 0.31622,
+        "losses": {
+          "ce": 0.31622
+        },
+        "grad_norm_mean": 6.87138,
+        "dev": {
+          "macro_f1": 0.71343,
+          "micro_f1": 0.71807,
+          "accuracy": 0.71807,
+          "ECE": 0.11741,
+          "NLL": 0.8686,
+          "Brier": 0.43225
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 8439,
+        "epoch_time_seconds": 218.67668,
+        "loss_total": 0.22369,
+        "losses": {
+          "ce": 0.22369
+        },
+        "grad_norm_mean": 7.2829,
+        "dev": {
+          "macro_f1": 0.72121,
+          "micro_f1": 0.72447,
+          "accuracy": 0.72447,
+          "ECE": 0.15767,
+          "NLL": 0.94845,
+          "Brier": 0.44091
+        }
+      }
+    ]
+  },
+  "metrics": {}
+}
