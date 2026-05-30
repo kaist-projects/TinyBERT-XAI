@@ -7,8 +7,10 @@ distillation (KD) loss components.
 The project fine-tunes a `bert-base-uncased` teacher, distills into
 `huawei-noah/TinyBERT_General_4L_312D` students, and compares CE-only training
 against Logit KD, Hidden KD, Attention KD, and all factorial combinations of
-those three KD signals. The current completed pilot uses TweetEval sentiment
-classification (`cardiffnlp/tweet_eval`, config `sentiment`).
+those three KD signals. Datasets are registered in a small registry and selected
+with `--dataset`; the completed pilot is TweetEval sentiment
+(`cardiffnlp/tweet_eval`, config `sentiment`), with IMDB and ANLI (sentence-pair)
+also wired up.
 
 ## Overview
 
@@ -56,10 +58,11 @@ python scripts/00_smoke_test.py
 
 ### Teacher Fine-Tuning
 
-Train the BERT teacher:
+Train the BERT teacher (`--dataset` selects a registered dataset; default
+`tweet_eval-sentiment`, also `imdb`, `anli`):
 
 ```bash
-python scripts/01_train_teacher.py
+python scripts/01_train_teacher.py --dataset tweet_eval-sentiment
 ```
 
 Evaluate the saved teacher on dev/test and patch its metadata:
@@ -76,10 +79,11 @@ Expected artifacts:
 ### Student Distillation
 
 Train one student condition by toggling distillation signals with flags
-(`--logit`, `--hidden`, `--attention`); no flags means the `ce_only` baseline:
+(`--logit`, `--hidden`, `--attention`); no flags means the `ce_only` baseline.
+`--dataset` selects the dataset (same choices as the teacher):
 
 ```bash
-python scripts/02_train_student.py --logit
+python scripts/02_train_student.py --dataset tweet_eval-sentiment --logit
 ```
 
 Pass `--eval` to chain evaluation onto training in one pass, patching the run's
@@ -103,8 +107,20 @@ by the teacher fine-tuning step.
 
 Expected artifacts:
 
-- `checkpoints/students/tweet_eval-sentiment/<condition>/best.pt`
-- `results/students/tweet_eval-sentiment/<condition>/run_metadata.json`
+- `checkpoints/students/<dataset>/<condition>/best.pt`
+- `results/students/<dataset>/<condition>/run_metadata.json`
+
+### Full Factorial Sweep
+
+Run the teacher fine-tune (once) plus all 8 student conditions for one dataset
+with a single command. The sweep invokes the per-run scripts as subprocesses for
+clean per-run GPU memory isolation and is resumable — artifacts that already
+exist are skipped unless `--force`:
+
+```bash
+python scripts/07_run_dataset.py --dataset imdb
+python scripts/07_run_dataset.py --dataset anli --skip-teacher
+```
 
 ### Analysis
 
@@ -132,6 +148,7 @@ tinybert_xai/
   analysis/       Factorial loaders, effect math, tables, and plots
   eval/           Metrics and teacher-student analysis
   conditions.py   The 8 student ablation conditions
+  datasets.py     Dataset registry + adapters (tweet_eval, imdb, anli)
   config.py       Default experiment configuration
   losses.py       CE, logit KD, hidden KD, and attention KD losses
   projections.py  Hidden-state projection module
@@ -145,6 +162,9 @@ scripts/
   02_train_student.py
   02b_eval_student.py
   06_analyze_factorial.py
+  07_run_dataset.py     Teacher + all 8 conditions for one dataset
+  _dataset_cli.py       Shared --dataset flag glue
+  _student_cli.py       Shared signal-flag glue
 
 tests/            Unit tests for losses, metrics, run logs, and factorial math
 docs/             Notes, plans, and source project documents
