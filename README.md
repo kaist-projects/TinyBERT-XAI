@@ -82,7 +82,15 @@ Train one student condition by toggling distillation signals with flags
 python scripts/02_train_student.py --logit
 ```
 
-Evaluate the saved student and patch its metadata (same flags select the run):
+Pass `--eval` to chain evaluation onto training in one pass, patching the run's
+metadata with dev/test metrics (equivalent to running `02b_eval_student.py`
+afterwards):
+
+```bash
+python scripts/02_train_student.py --logit --eval
+```
+
+Or evaluate a saved student separately (same flags select the run):
 
 ```bash
 python scripts/02b_eval_student.py --logit
