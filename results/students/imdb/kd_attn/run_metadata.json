@@ -1,0 +1,165 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "student-kd_attn-imdb-2026-05-30T04:15:07Z",
+    "stage": "student",
+    "condition": "kd_attn"
+  },
+  "dataset": {
+    "name": "stanfordnlp/imdb",
+    "config": null,
+    "num_labels": 2,
+    "label_names": [
+      "negative",
+      "positive"
+    ],
+    "input_type": "single_text",
+    "split_scheme": "stratified_dev_0.1_seed42",
+    "source_fingerprint": null,
+    "splits": {
+      "train": 22500,
+      "validation": 2500,
+      "test": 25000
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "student_checkpoint": "huawei-noah/TinyBERT_General_4L_312D",
+    "tokenizer": "bert-base-uncased",
+    "teacher_checkpoint": "bert-base-uncased",
+    "parameter_count": 14350874
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 2,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/students/imdb/kd_attn/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24118.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 323.68208,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 1407,
+        "epoch_time_seconds": 106.08332,
+        "loss_total": 0.41704,
+        "losses": {
+          "ce": 0.41601,
+          "attention": 0.00104
+        },
+        "grad_norm_mean": 9.56975,
+        "dev": {
+          "macro_f1": 0.82937,
+          "micro_f1": 0.8304,
+          "accuracy": 0.8304,
+          "ECE": 0.04588,
+          "NLL": 0.39989,
+          "Brier": 0.24756
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 2814,
+        "epoch_time_seconds": 109.48163,
+        "loss_total": 0.32561,
+        "losses": {
+          "ce": 0.32455,
+          "attention": 0.00106
+        },
+        "grad_norm_mean": 10.85137,
+        "dev": {
+          "macro_f1": 0.84665,
+          "micro_f1": 0.8472,
+          "accuracy": 0.8472,
+          "ECE": 0.04002,
+          "NLL": 0.36063,
+          "Brier": 0.22185
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 4221,
+        "epoch_time_seconds": 101.31179,
+        "loss_total": 0.26507,
+        "losses": {
+          "ce": 0.26398,
+          "attention": 0.00109
+        },
+        "grad_norm_mean": 12.63682,
+        "dev": {
+          "macro_f1": 0.84885,
+          "micro_f1": 0.8492,
+          "accuracy": 0.8492,
+          "ECE": 0.04185,
+          "NLL": 0.35058,
+          "Brier": 0.21498
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.84885,
+      "micro_f1": 0.8492,
+      "accuracy": 0.8492,
+      "per_class_f1": [0.85616, 0.84153],
+      "confusion_matrix": [
+        [1122, 128],
+        [249, 1001]
+      ],
+      "ECE": 0.04185,
+      "NLL": 0.35058,
+      "Brier": 0.21498
+    },
+    "test": {
+      "macro_f1": 0.85189,
+      "micro_f1": 0.8522,
+      "accuracy": 0.8522,
+      "per_class_f1": [0.85862, 0.84517],
+      "confusion_matrix": [
+        [11220, 1280],
+        [2415, 10085]
+      ],
+      "ECE": 0.03809,
+      "NLL": 0.34635,
+      "Brier": 0.21361,
+      "teacher_student_analysis": {
+        "top1_agreement": 0.89496,
+        "teacher_student_kl": 0.12617,
+        "teacher_correct_student_wrong": 1767,
+        "teacher_wrong_student_correct": 859,
+        "error_copying": 1.0
+      }
+    }
+  }
+}

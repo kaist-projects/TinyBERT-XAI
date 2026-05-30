@@ -1,0 +1,166 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "student-kd_hidden-imdb-2026-05-30T04:15:20Z",
+    "stage": "student",
+    "condition": "kd_hidden"
+  },
+  "dataset": {
+    "name": "stanfordnlp/imdb",
+    "config": null,
+    "num_labels": 2,
+    "label_names": [
+      "negative",
+      "positive"
+    ],
+    "input_type": "single_text",
+    "split_scheme": "stratified_dev_0.1_seed42",
+    "source_fingerprint": null,
+    "splits": {
+      "train": 22500,
+      "validation": 2500,
+      "test": 25000
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "student_checkpoint": "huawei-noah/TinyBERT_General_4L_312D",
+    "tokenizer": "bert-base-uncased",
+    "teacher_checkpoint": "bert-base-uncased",
+    "parameter_count": 15312410,
+    "projection_parameter_count": 961536
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 1,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/students/imdb/kd_hidden/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24118.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 339.11484,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 1407,
+        "epoch_time_seconds": 111.24224,
+        "loss_total": 0.89979,
+        "losses": {
+          "ce": 0.47101,
+          "hidden": 0.42878
+        },
+        "grad_norm_mean": 8.85415,
+        "dev": {
+          "macro_f1": 0.8085,
+          "micro_f1": 0.81,
+          "accuracy": 0.81,
+          "ECE": 0.03431,
+          "NLL": 0.41677,
+          "Brier": 0.26364
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 2814,
+        "epoch_time_seconds": 108.53542,
+        "loss_total": 0.69985,
+        "losses": {
+          "ce": 0.34662,
+          "hidden": 0.35323
+        },
+        "grad_norm_mean": 11.77518,
+        "dev": {
+          "macro_f1": 0.84372,
+          "micro_f1": 0.844,
+          "accuracy": 0.844,
+          "ECE": 0.02965,
+          "NLL": 0.35505,
+          "Brier": 0.22142
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 4221,
+        "epoch_time_seconds": 113.3141,
+        "loss_total": 0.58063,
+        "losses": {
+          "ce": 0.27402,
+          "hidden": 0.30661
+        },
+        "grad_norm_mean": 14.06918,
+        "dev": {
+          "macro_f1": 0.8367,
+          "micro_f1": 0.8376,
+          "accuracy": 0.8376,
+          "ECE": 0.05332,
+          "NLL": 0.38115,
+          "Brier": 0.23518
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.84372,
+      "micro_f1": 0.844,
+      "accuracy": 0.844,
+      "per_class_f1": [0.85035, 0.83709],
+      "confusion_matrix": [
+        [1108, 142],
+        [248, 1002]
+      ],
+      "ECE": 0.02965,
+      "NLL": 0.35505,
+      "Brier": 0.22142
+    },
+    "test": {
+      "macro_f1": 0.83844,
+      "micro_f1": 0.83884,
+      "accuracy": 0.83884,
+      "per_class_f1": [0.84645, 0.83044],
+      "confusion_matrix": [
+        [11105, 1395],
+        [2634, 9866]
+      ],
+      "ECE": 0.03433,
+      "NLL": 0.35945,
+      "Brier": 0.22653,
+      "teacher_student_analysis": {
+        "top1_agreement": 0.88104,
+        "teacher_student_kl": 0.14655,
+        "teacher_correct_student_wrong": 2108,
+        "teacher_wrong_student_correct": 866,
+        "error_copying": 1.0
+      }
+    }
+  }
+}

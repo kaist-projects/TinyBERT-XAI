@@ -1,0 +1,165 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "student-kd_logit-imdb-2026-05-30T04:14:39Z",
+    "stage": "student",
+    "condition": "kd_logit"
+  },
+  "dataset": {
+    "name": "stanfordnlp/imdb",
+    "config": null,
+    "num_labels": 2,
+    "label_names": [
+      "negative",
+      "positive"
+    ],
+    "input_type": "single_text",
+    "split_scheme": "stratified_dev_0.1_seed42",
+    "source_fingerprint": null,
+    "splits": {
+      "train": 22500,
+      "validation": 2500,
+      "test": 25000
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "student_checkpoint": "huawei-noah/TinyBERT_General_4L_312D",
+    "tokenizer": "bert-base-uncased",
+    "teacher_checkpoint": "bert-base-uncased",
+    "parameter_count": 14350874
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 1,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/students/imdb/kd_logit/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24118.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 305.57286,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 1407,
+        "epoch_time_seconds": 78.45516,
+        "loss_total": 0.70238,
+        "losses": {
+          "ce": 0.41419,
+          "logit": 0.28819
+        },
+        "grad_norm_mean": 18.79197,
+        "dev": {
+          "macro_f1": 0.82989,
+          "micro_f1": 0.8308,
+          "accuracy": 0.8308,
+          "ECE": 0.04294,
+          "NLL": 0.39391,
+          "Brier": 0.24353
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 2814,
+        "epoch_time_seconds": 110.35114,
+        "loss_total": 0.52026,
+        "losses": {
+          "ce": 0.32065,
+          "logit": 0.19961
+        },
+        "grad_norm_mean": 20.25151,
+        "dev": {
+          "macro_f1": 0.84966,
+          "micro_f1": 0.85,
+          "accuracy": 0.85,
+          "ECE": 0.04204,
+          "NLL": 0.3551,
+          "Brier": 0.21711
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 4221,
+        "epoch_time_seconds": 111.1346,
+        "loss_total": 0.40962,
+        "losses": {
+          "ce": 0.26234,
+          "logit": 0.14728
+        },
+        "grad_norm_mean": 22.2463,
+        "dev": {
+          "macro_f1": 0.84389,
+          "micro_f1": 0.8444,
+          "accuracy": 0.8444,
+          "ECE": 0.0558,
+          "NLL": 0.35997,
+          "Brier": 0.22025
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.84966,
+      "micro_f1": 0.85,
+      "accuracy": 0.85,
+      "per_class_f1": [0.85682, 0.8425],
+      "confusion_matrix": [
+        [1122, 128],
+        [247, 1003]
+      ],
+      "ECE": 0.04204,
+      "NLL": 0.3551,
+      "Brier": 0.21711
+    },
+    "test": {
+      "macro_f1": 0.85078,
+      "micro_f1": 0.85108,
+      "accuracy": 0.85108,
+      "per_class_f1": [0.8575, 0.84405],
+      "confusion_matrix": [
+        [11202, 1298],
+        [2425, 10075]
+      ],
+      "ECE": 0.0402,
+      "NLL": 0.34824,
+      "Brier": 0.21505,
+      "teacher_student_analysis": {
+        "top1_agreement": 0.89728,
+        "teacher_student_kl": 0.12109,
+        "teacher_correct_student_wrong": 1752,
+        "teacher_wrong_student_correct": 816,
+        "error_copying": 1.0
+      }
+    }
+  }
+}
