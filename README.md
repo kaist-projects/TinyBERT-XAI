@@ -5,47 +5,34 @@ TinyBERT-XAI is a KAIST CS50700 Deep Learning final project that replicates and
 extends TinyBERT-style task distillation with granular control over knowledge
 distillation (KD) loss components.
 
-- Logit KD: match teacher output distributions.
-- Hidden KD: match selected teacher hidden states through learned projections.
-- Attention KD: match teacher attention probabilities.
+- **Logit KD**: match teacher output distributions.
+- **Hidden KD**: match selected teacher hidden states through learned projections.
+- **Attention KD**: match teacher attention probabilities.
 
 Each run writes structured metadata, evaluation metrics, and loss magnitudes so
 the ablation can be analyzed reproducibly.
 
 ## Datasets
 
-The design targets 9 datasets across 4 task families. Each is selected on the
-CLI by its registry key via `--dataset` (e.g. `python scripts/01_train_teacher.py
---dataset imdb`). The status column reflects what is wired up today; ✅ are
-runnable now, ⬜ are planned (their `--dataset` keys are proposed, not yet
-registered), and 🔒 needs gated access.
+Datasets are selected with `--dataset <key>` and share the same teacher/student
+pipeline.
 
-| Dataset (family) | `--dataset` | Source | Input | Status |
-|---|---|---|---|---|
-| TweetEval-sentiment (sentiment) | `tweet_eval-sentiment` | [cardiffnlp/tweet_eval](https://huggingface.co/datasets/cardiffnlp/tweet_eval) | single | ✅ |
-| IMDB (sentiment) | `imdb` | [stanfordnlp/imdb](https://huggingface.co/datasets/stanfordnlp/imdb) | single | ✅ |
-| ANLI (NLI) | `anli` | [facebook/anli](https://huggingface.co/datasets/facebook/anli) | pair | ✅ |
-| Davidson (hate speech) | `davidson` | [tdavidson/hate_speech_offensive](https://huggingface.co/datasets/tdavidson/hate_speech_offensive) | single | ✅ |
-| DynaHate (hate speech) | `dynahate` | [bvidgen/Dynamically-Generated-Hate-Speech-Dataset](https://github.com/bvidgen/Dynamically-Generated-Hate-Speech-Dataset) | single | ✅ (manual CSV) |
-| HatEval (hate speech) | `hateval` | [valeriobasile/HatEval](https://huggingface.co/datasets/valeriobasile/HatEval) | single | ✅ 🔒 (gated) |
-| FEVER (NLI) | `fever` | [pietrolesci/nli_fever](https://huggingface.co/datasets/pietrolesci/nli_fever) | pair | ✅ |
-| VarDial / Swiss-German (dialects) | `vardial` | [statworx/swiss-dialects](https://huggingface.co/datasets/statworx/swiss-dialects) | single | ✅ |
+| Dataset | `--dataset` | Task | Notes |
+|---|---|---|---|
+| [TweetEval-sentiment](https://huggingface.co/datasets/cardiffnlp/tweet_eval) | `tweet_eval-sentiment` | sentiment | official splits |
+| [IMDB](https://huggingface.co/datasets/stanfordnlp/imdb) | `imdb` | sentiment | seed-42 dev split |
+| [ANLI](https://huggingface.co/datasets/facebook/anli) | `anli` | NLI | sentence-pair input |
+| [Davidson](https://huggingface.co/datasets/tdavidson/hate_speech_offensive) | `davidson` | hate speech | seed-42 80/10/10 split |
+| [DynaHate](https://github.com/bvidgen/Dynamically-Generated-Hate-Speech-Dataset) | `dynahate` | hate speech | local CSV |
+| [HatEval](https://huggingface.co/datasets/valeriobasile/HatEval) | `hateval` | hate speech | HF-gated |
+| [FEVER](https://huggingface.co/datasets/pietrolesci/nli_fever) | `fever` | NLI | 50K train cap |
+| [VarDial](https://huggingface.co/datasets/statworx/swiss-dialects) | `vardial` | dialect ID | seed-42 80/10/10 split |
+| Multi-VALUE | `multivalue` | dialect ID | generated local CSV |
 
-Datasets with no official validation/test split are partitioned with a seed-42
-stratified split (IMDB: dev only; Davidson and VarDial: 80/10/10). VarDial
-(`statworx/swiss-dialects`) is single-split Swiss-German dialect ID whose string
-labels are mapped to ints. Multi-VALUE ships no labeled data — it is a dialect
-transformation toolkit; `scripts/build_multivalue.py` (needs `pip install value-nlp`)
-generates a binary SAE-vs-dialect CSV at `data/multivalue/multivalue.csv` (gitignored)
-whose `split` column is used as-is. FEVER's official test split
-ships unlabeled, so its `dev` split is used for validation and a seed-42 stratified
-test set is carved from train; train is also subsampled to 50K (seed-42, stratified)
-to keep the 3-epoch budget comparable across datasets. HatEval is HF-gated — accept
-the dataset terms and `huggingface-cli login` before running it; its config slug,
-text column, and split names are best-effort assumptions to confirm on first load.
-DynaHate is distributed as a GitHub CSV rather than on the Hub — download v0.2.3 and
-save it as `data/dynahate/dynahate_v0.2.3.csv` (gitignored) before running it; its
-official `split` column is used as-is.
+Local datasets are gitignored: save DynaHate to
+`data/dynahate/dynahate_v0.2.3.csv`, and build Multi-VALUE with
+`scripts/build_multivalue.py`. HatEval requires accepting the Hugging Face terms
+and logging in before use.
 
 ## Features
 
@@ -67,15 +54,6 @@ conda activate tinybert-xai
 pip install -r requirements.txt
 ```
 
-`requirements.txt` installs PyTorch with CUDA 12.4 wheels, HuggingFace
-Transformers/Datasets, the scientific Python stack, plotting libraries, and dev
-tools. The default configuration uses bf16 autocast when CUDA is available.
-
-Optional smoke test:
-
-```bash
-python scripts/00_smoke_test.py
-```
 
 ### Teacher Fine-Tuning
 
@@ -90,7 +68,7 @@ Evaluate the saved teacher on dev/test and patch its metadata (or pass `--eval`
 to `01_train_teacher.py` to chain evaluation onto training in one pass):
 
 ```bash
-python scripts/01b_eval_teacher.py
+python scripts/01b_eval_teacher.py --dataset tweet_eval-sentiment
 ```
 
 Expected artifacts:
@@ -208,19 +186,6 @@ results/          Run metadata and analysis outputs
 | `kd_hidden_attn` |  | Y | Y |
 | `kd_full` | Y | Y | Y |
 
-## Results
-
-Current TweetEval-sentiment pilot results:
-
-- Teacher test macro-F1: `0.6870`.
-- Best student: `kd_logit`, test macro-F1 `0.6631`.
-- CE-only student: test macro-F1 `0.6592`.
-- Student macro-F1 spread across all 8 conditions: `0.0198`.
-
-The generated report and plots are in `results/analysis/tweet_eval-sentiment/`. The pilot passes the
-pipeline-validity gate, so the analysis verdict is GO for scaling the experiment
-framework beyond the pilot dataset.
-
 ## Notes / Limitations
 
 - The current pilot is single-seed. The observed `0.0198` student spread should
@@ -232,18 +197,6 @@ framework beyond the pilot dataset.
 - `reference/` contains the original TinyBERT authors' older codebase for
   comparison. The active implementation is the modern HuggingFace/PyTorch code
   under `tinybert_xai/`.
-- Checkpoints are intentionally not tracked in git. Recreate them with the
-  training scripts.
-
-## Testing
-
-```bash
-ruff check
-pytest tests/
-```
-
-`ruff` excludes `reference/` because that directory contains legacy upstream
-code that is not part of the active implementation.
 
 ## Acknowledgements
 

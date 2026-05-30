@@ -1,0 +1,164 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "student-ce_only-fever-2026-05-30T09:35:14Z",
+    "stage": "student",
+    "condition": "ce_only"
+  },
+  "dataset": {
+    "name": "pietrolesci/nli_fever",
+    "config": null,
+    "num_labels": 3,
+    "label_names": [
+      "entailment",
+      "neutral",
+      "contradiction"
+    ],
+    "input_type": "sentence_pair",
+    "split_scheme": "stratified_test_0.1_sub50000_seed42",
+    "source_fingerprint": null,
+    "splits": {
+      "train": 45000,
+      "validation": 19998,
+      "test": 5000
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "student_checkpoint": "huawei-noah/TinyBERT_General_4L_312D",
+    "tokenizer": "bert-base-uncased",
+    "parameter_count": 14351187
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 2,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/students/fever/ce_only/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24118.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 1047.11718,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 2813,
+        "epoch_time_seconds": 239.67403,
+        "loss_total": 0.51808,
+        "losses": {
+          "ce": 0.51808
+        },
+        "grad_norm_mean": 10.50273,
+        "dev": {
+          "macro_f1": 0.65117,
+          "micro_f1": 0.66152,
+          "accuracy": 0.66152,
+          "ECE": 0.13942,
+          "NLL": 0.88513,
+          "Brier": 0.49737
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 5626,
+        "epoch_time_seconds": 323.65265,
+        "loss_total": 0.41558,
+        "losses": {
+          "ce": 0.41558
+        },
+        "grad_norm_mean": 10.51997,
+        "dev": {
+          "macro_f1": 0.67983,
+          "micro_f1": 0.68772,
+          "accuracy": 0.68772,
+          "ECE": 0.15408,
+          "NLL": 0.91014,
+          "Brier": 0.48175
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 8439,
+        "epoch_time_seconds": 330.99865,
+        "loss_total": 0.36868,
+        "losses": {
+          "ce": 0.36868
+        },
+        "grad_norm_mean": 10.74578,
+        "dev": {
+          "macro_f1": 0.69891,
+          "micro_f1": 0.70427,
+          "accuracy": 0.70427,
+          "ECE": 0.12289,
+          "NLL": 0.87147,
+          "Brier": 0.45333
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.69891,
+      "micro_f1": 0.70427,
+      "accuracy": 0.70427,
+      "per_class_f1": [0.77671, 0.6015, 0.71851],
+      "confusion_matrix": [
+        [5649, 615, 402],
+        [1542, 3640, 1484],
+        [689, 1182, 4795]
+      ],
+      "ECE": 0.12289,
+      "NLL": 0.87147,
+      "Brier": 0.45333
+    },
+    "test": {
+      "macro_f1": 0.80735,
+      "micro_f1": 0.863,
+      "accuracy": 0.863,
+      "per_class_f1": [0.92616, 0.66667, 0.82923],
+      "confusion_matrix": [
+        [2797, 76, 93],
+        [193, 508, 154],
+        [84, 85, 1010]
+      ],
+      "ECE": 0.02022,
+      "NLL": 0.3935,
+      "Brier": 0.20807,
+      "teacher_student_analysis": {
+        "top1_agreement": 0.9104,
+        "teacher_student_kl": 0.12695,
+        "teacher_correct_student_wrong": 209,
+        "teacher_wrong_student_correct": 187,
+        "error_copying": 0.89076
+      }
+    }
+  }
+}
