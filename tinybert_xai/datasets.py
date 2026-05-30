@@ -161,16 +161,13 @@ DATASET_HATEVAL = DatasetSpec(
     name="hateval",
     family="hate",
     hf_path="valeriobasile/HatEval",
-    # NOTE: HatEval is HF-gated; hf_config, text_keys, and the split names below
-    # are best-effort assumptions that could not be verified (datasets-server
-    # returns 401 without access). Confirm them on the first authenticated load
-    # after accepting the dataset terms + `huggingface-cli login`.
-    hf_config="english",
+    # HF repo exposes one multilingual config and names the validation split "dev".
+    hf_config="default",
     num_labels=2,
     label_names=["not_hate", "hate"],
     text_keys=("text",),
     label_key="HS",
-    split_sources={"train": "train", "validation": "validation", "test": "test"},
+    split_sources={"train": "train", "validation": "dev", "test": "test"},
 )
 
 
