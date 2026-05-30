@@ -1,0 +1,161 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "student-ce_only-imdb-2026-05-30T04:41:26Z",
+    "stage": "student",
+    "condition": "ce_only"
+  },
+  "dataset": {
+    "name": "stanfordnlp/imdb",
+    "config": null,
+    "num_labels": 2,
+    "label_names": [
+      "negative",
+      "positive"
+    ],
+    "input_type": "single_text",
+    "split_scheme": "stratified_dev_0.1_seed42",
+    "source_fingerprint": null,
+    "splits": {
+      "train": 22500,
+      "validation": 2500,
+      "test": 25000
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "student_checkpoint": "huawei-noah/TinyBERT_General_4L_312D",
+    "tokenizer": "bert-base-uncased",
+    "parameter_count": 14350874
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 2,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/students/imdb/ce_only/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24118.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 254.04406,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 1407,
+        "epoch_time_seconds": 82.36725,
+        "loss_total": 0.41749,
+        "losses": {
+          "ce": 0.41749
+        },
+        "grad_norm_mean": 9.6161,
+        "dev": {
+          "macro_f1": 0.82946,
+          "micro_f1": 0.8304,
+          "accuracy": 0.8304,
+          "ECE": 0.04255,
+          "NLL": 0.39825,
+          "Brier": 0.24692
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 2814,
+        "epoch_time_seconds": 78.97296,
+        "loss_total": 0.3256,
+        "losses": {
+          "ce": 0.3256
+        },
+        "grad_norm_mean": 10.86766,
+        "dev": {
+          "macro_f1": 0.84666,
+          "micro_f1": 0.8472,
+          "accuracy": 0.8472,
+          "ECE": 0.03867,
+          "NLL": 0.3595,
+          "Brier": 0.22136
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 4221,
+        "epoch_time_seconds": 83.28456,
+        "loss_total": 0.26436,
+        "losses": {
+          "ce": 0.26436
+        },
+        "grad_norm_mean": 12.64471,
+        "dev": {
+          "macro_f1": 0.84923,
+          "micro_f1": 0.8496,
+          "accuracy": 0.8496,
+          "ECE": 0.04132,
+          "NLL": 0.3524,
+          "Brier": 0.21586
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.84923,
+      "micro_f1": 0.8496,
+      "accuracy": 0.8496,
+      "per_class_f1": [0.85671, 0.84175],
+      "confusion_matrix": [
+        [1124, 126],
+        [250, 1000]
+      ],
+      "ECE": 0.04132,
+      "NLL": 0.3524,
+      "Brier": 0.21586
+    },
+    "test": {
+      "macro_f1": 0.85016,
+      "micro_f1": 0.85052,
+      "accuracy": 0.85052,
+      "per_class_f1": [0.85755, 0.84277],
+      "confusion_matrix": [
+        [11248, 1252],
+        [2485, 10015]
+      ],
+      "ECE": 0.03973,
+      "NLL": 0.34886,
+      "Brier": 0.21515,
+      "teacher_student_analysis": {
+        "top1_agreement": 0.89312,
+        "teacher_student_kl": 0.12853,
+        "teacher_correct_student_wrong": 1811,
+        "teacher_wrong_student_correct": 861,
+        "error_copying": 1.0
+      }
+    }
+  }
+}

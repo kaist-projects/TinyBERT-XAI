@@ -1,0 +1,153 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "teacher-imdb-2026-05-30T03:23:25Z",
+    "stage": "teacher",
+    "condition": null
+  },
+  "dataset": {
+    "name": "stanfordnlp/imdb",
+    "config": null,
+    "num_labels": 2,
+    "label_names": [
+      "negative",
+      "positive"
+    ],
+    "input_type": "single_text",
+    "split_scheme": "stratified_dev_0.1_seed42",
+    "splits": {
+      "train": 22500,
+      "validation": 2500,
+      "test": 25000
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "checkpoint": "bert-base-uncased",
+    "tokenizer": "bert-base-uncased",
+    "parameter_count": 109483778
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 1,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/teachers/imdb/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24118.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 510.79705,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 1407,
+        "epoch_time_seconds": 140.32529,
+        "loss_total": 0.33859,
+        "losses": {
+          "ce": 0.33859
+        },
+        "grad_norm_mean": 6.39436,
+        "dev": {
+          "macro_f1": 0.88299,
+          "micro_f1": 0.8832,
+          "accuracy": 0.8832,
+          "ECE": 0.02173,
+          "NLL": 0.28625,
+          "Brier": 0.17513
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 2814,
+        "epoch_time_seconds": 172.04952,
+        "loss_total": 0.20279,
+        "losses": {
+          "ce": 0.20279
+        },
+        "grad_norm_mean": 6.39817,
+        "dev": {
+          "macro_f1": 0.88598,
+          "micro_f1": 0.886,
+          "accuracy": 0.886,
+          "ECE": 0.04873,
+          "NLL": 0.29848,
+          "Brier": 0.17101
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 4221,
+        "epoch_time_seconds": 172.09601,
+        "loss_total": 0.10655,
+        "losses": {
+          "ce": 0.10655
+        },
+        "grad_norm_mean": 6.50986,
+        "dev": {
+          "macro_f1": 0.86168,
+          "micro_f1": 0.862,
+          "accuracy": 0.862,
+          "ECE": 0.07707,
+          "NLL": 0.38768,
+          "Brier": 0.21587
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.88598,
+      "micro_f1": 0.886,
+      "accuracy": 0.886,
+      "per_class_f1": [0.88731, 0.88466],
+      "confusion_matrix": [
+        [1122, 128],
+        [157, 1093]
+      ],
+      "ECE": 0.04873,
+      "NLL": 0.29848,
+      "Brier": 0.17101
+    },
+    "test": {
+      "macro_f1": 0.88851,
+      "micro_f1": 0.88852,
+      "accuracy": 0.88852,
+      "per_class_f1": [0.88979, 0.88723],
+      "confusion_matrix": [
+        [11250, 1250],
+        [1537, 10963]
+      ],
+      "ECE": 0.04331,
+      "NLL": 0.28568,
+      "Brier": 0.1673
+    }
+  }
+}

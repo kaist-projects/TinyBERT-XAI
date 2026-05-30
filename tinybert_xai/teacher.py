@@ -17,7 +17,7 @@ from tqdm.auto import tqdm
 from transformers import set_seed as hf_set_seed
 
 from tinybert_xai.checkpoints import load_state_dict, results_dir, save_state_dict, teacher_dir, validate_run_artifacts
-from tinybert_xai.datasets import build_loader
+from tinybert_xai.datasets import build_loader, source_fingerprint
 from tinybert_xai.earlystop import EarlyStopper
 from tinybert_xai.eval import EvaluationResult, evaluate
 from tinybert_xai.models import load_classifier, load_tokenizer
@@ -113,6 +113,9 @@ def start_teacher_metadata(cfg: "Config", spec: "DatasetSpec", device: str) -> R
             "config": spec.hf_config,
             "num_labels": spec.num_labels,
             "label_names": spec.label_names,
+            "input_type": spec.input_type,
+            "split_scheme": spec.split_scheme,
+            "source_fingerprint": source_fingerprint(spec),
             "splits": {},
             "max_seq_length": cfg.max_seq_length,
             "truncation": True,
@@ -347,6 +350,22 @@ def save_teacher_evaluation_result(result: TeacherEvaluationResult) -> None:
         }
 
     patch_metadata_file(result.metadata_path, mutate)
+
+
+def format_teacher_eval_summary(result: TeacherEvaluationResult) -> str:
+    """Render the dev/test evaluation summary as a printable multi-line string."""
+    dev, test = result.dev_result, result.test_result
+    lines = [
+        f"  dev={result.dev_size}  test={result.test_size}",
+        f"  dev macro-F1  : {dev.macro_f1:.4f}",
+        f"  dev accuracy  : {dev.accuracy:.4f}",
+        f"  dev ECE       : {dev.ECE:.4f}",
+        f"  test macro-F1 : {test.macro_f1:.4f}",
+        f"  test accuracy : {test.accuracy:.4f}",
+        f"  test ECE      : {test.ECE:.4f}",
+        f"  per-class F1  : {[f'{v:.3f}' for v in test.per_class_f1]}",
+    ]
+    return "\n".join(lines)
 
 
 def _teacher_batch_loss(

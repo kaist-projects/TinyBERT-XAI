@@ -1,0 +1,157 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "teacher-dynahate-2026-05-30T08:28:06Z",
+    "stage": "teacher",
+    "condition": null
+  },
+  "dataset": {
+    "name": null,
+    "config": null,
+    "num_labels": 2,
+    "label_names": [
+      "nothate",
+      "hate"
+    ],
+    "input_type": "single_text",
+    "split_scheme": "official_csv",
+    "source_fingerprint": {
+      "raw_file": "data/dynahate/dynahate_v0.2.3.csv",
+      "sha256": "6e0aa7e598ab5b648cb1f0b48626a3e5f2e39a5abbd9fee998efa5a0b6cab4ca"
+    },
+    "splits": {
+      "train": 32924,
+      "validation": 4100,
+      "test": 4120
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "checkpoint": "bert-base-uncased",
+    "tokenizer": "bert-base-uncased",
+    "parameter_count": 109483778
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 1,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/teachers/dynahate/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24117.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 429.50293,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 2058,
+        "epoch_time_seconds": 136.04805,
+        "loss_total": 0.47472,
+        "losses": {
+          "ce": 0.47472
+        },
+        "grad_norm_mean": 5.9507,
+        "dev": {
+          "macro_f1": 0.79683,
+          "micro_f1": 0.80341,
+          "accuracy": 0.80341,
+          "ECE": 0.04725,
+          "NLL": 0.41506,
+          "Brier": 0.26795
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 4116,
+        "epoch_time_seconds": 135.88001,
+        "loss_total": 0.31255,
+        "losses": {
+          "ce": 0.31255
+        },
+        "grad_norm_mean": 6.84946,
+        "dev": {
+          "macro_f1": 0.82518,
+          "micro_f1": 0.82634,
+          "accuracy": 0.82634,
+          "ECE": 0.0335,
+          "NLL": 0.3768,
+          "Brier": 0.2406
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 6174,
+        "epoch_time_seconds": 135.91604,
+        "loss_total": 0.20125,
+        "losses": {
+          "ce": 0.20125
+        },
+        "grad_norm_mean": 7.55877,
+        "dev": {
+          "macro_f1": 0.80831,
+          "micro_f1": 0.81049,
+          "accuracy": 0.81049,
+          "ECE": 0.08736,
+          "NLL": 0.45036,
+          "Brier": 0.26846
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.82518,
+      "micro_f1": 0.82634,
+      "accuracy": 0.82634,
+      "per_class_f1": [0.81094, 0.83942],
+      "confusion_matrix": [
+        [1527, 406],
+        [306, 1861]
+      ],
+      "ECE": 0.0335,
+      "NLL": 0.3768,
+      "Brier": 0.2406
+    },
+    "test": {
+      "macro_f1": 0.77793,
+      "micro_f1": 0.78107,
+      "accuracy": 0.78107,
+      "per_class_f1": [0.75152, 0.80434],
+      "confusion_matrix": [
+        [1364, 488],
+        [414, 1854]
+      ],
+      "ECE": 0.06665,
+      "NLL": 0.49122,
+      "Brier": 0.30361
+    }
+  }
+}

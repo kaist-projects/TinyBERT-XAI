@@ -68,7 +68,7 @@ def render_main_effects_table(effects: pd.DataFrame, metric: str) -> str:
         "",
         "Positive estimates mean the factor or interaction increases the metric under",
         "standard +/-1 factorial coding. Magnitudes are informational for this",
-        "single-seed pilot.",
+        "single-seed run.",
         "",
         "| Effect | Kind | Estimate | Absolute |",
         "|---|---:|---:|---:|",
@@ -136,10 +136,10 @@ def render_factorial_report(
     lines.extend(
         [
             "",
-            "The best pilot student is `kd_logit`, but the full student spread is within",
-            "single-seed noise. The factorial effects below should therefore be read as",
-            "pipeline diagnostics and descriptive pilot statistics, not resolved causal",
-            "estimates.",
+            f"The best student is `{best['condition']}` (test macro-F1 "
+            f"`{best['test_macro_f1']:.4f}`), but with a single seed the factorial effects",
+            "below should be read as pipeline diagnostics and descriptive statistics, not",
+            "resolved causal estimates.",
             "",
             "## Student Ablation Table",
             "",
@@ -149,7 +149,7 @@ def render_factorial_report(
             _without_title(render_main_effects_table(effects, "test_macro_f1")),
             "## Attention-Loss Caveat",
             "",
-            "Attention KD used post-softmax attention probabilities in this pilot. Its",
+            "Attention KD used post-softmax attention probabilities in this run. Its",
             "final loss magnitude is near-inert compared with CE, logit, and hidden",
             "losses, so the attention factor was only weakly applied. Fix this signal or",
             "explicitly document the caveat before scaling the experiment.",

@@ -31,6 +31,11 @@ rich
 # Optional experiment tracking
 wandb
 
+# Optional: only needed to generate the `multivalue` dataset via
+# scripts/build_multivalue.py. Heavy (pulls spaCy + Stanza), so it is not
+# installed by default — run `pip install value-nlp` when building that dataset.
+# value-nlp
+
 # Dev tooling
 pytest
 ruff

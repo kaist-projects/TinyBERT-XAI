@@ -22,3 +22,15 @@ def add_signal_flags(parser: argparse.ArgumentParser) -> None:
 def condition_from_args(args: argparse.Namespace) -> ConditionSpec:
     """Build the distillation condition from parsed signal flags."""
     return condition_from_flags(args.logit, args.hidden, args.attention)
+
+
+def condition_to_flags(cond: ConditionSpec) -> list[str]:
+    """Inverse of the signal flags: the --flags that reproduce this condition."""
+    flags = []
+    if cond.logit:
+        flags.append("--logit")
+    if cond.hidden:
+        flags.append("--hidden")
+    if cond.attention:
+        flags.append("--attention")
+    return flags
