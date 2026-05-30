@@ -151,19 +151,20 @@ python scripts/07_run_dataset.py --dataset anli --skip-teacher
 
 ### Analysis
 
-Run the factorial analysis for the pilot dataset:
+Run the factorial analysis for a dataset (defaults to the pilot):
 
 ```bash
 python scripts/06_analyze_factorial.py tweet_eval-sentiment
 ```
 
-Generated artifacts:
+Artifacts are written per dataset under `results/analysis/<dataset>/`, so running
+the analysis for another dataset never overwrites an existing report:
 
-- `REPORT.md`
-- `results/analysis/figures/condition_bars.png`
-- `results/analysis/figures/main_effects.png`
-- `results/analysis/figures/loss_magnitudes.png`
-- `results/analysis/figures/calibration.png`
+- `results/analysis/<dataset>/REPORT.md`
+- `results/analysis/<dataset>/figures/condition_bars.png`
+- `results/analysis/<dataset>/figures/main_effects.png`
+- `results/analysis/<dataset>/figures/loss_magnitudes.png`
+- `results/analysis/<dataset>/figures/calibration.png`
 
 The script also prints a pipeline-validity checklist and a GO/NO-GO verdict for
 scaling beyond the pilot dataset.
@@ -221,7 +222,7 @@ Current TweetEval-sentiment pilot results:
 - CE-only student: test macro-F1 `0.6592`.
 - Student macro-F1 spread across all 8 conditions: `0.0198`.
 
-The generated tables and plots are in `results/analysis/`. The pilot passes the
+The generated report and plots are in `results/analysis/tweet_eval-sentiment/`. The pilot passes the
 pipeline-validity gate, so the analysis verdict is GO for scaling the experiment
 framework beyond the pilot dataset.
 

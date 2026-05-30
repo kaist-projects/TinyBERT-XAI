@@ -6,8 +6,8 @@ Dataset: `tweet_eval-sentiment`
 
 - Teacher metadata: `results/teachers/tweet_eval-sentiment/run_metadata.json`
 - Student metadata: `results/students/tweet_eval-sentiment/*/run_metadata.json`
-- Report: `REPORT.md`
-- Figures: `results/analysis/figures/`
+- Report: `results/analysis/tweet_eval-sentiment/REPORT.md`
+- Figures: `figures/`
 
 ## Validity Checklist
 
@@ -28,10 +28,9 @@ Dataset: `tweet_eval-sentiment`
 - Student macro-F1 spread across conditions: `0.0198`.
 - Mean final attention-loss magnitude: `0.00453`.
 
-The best pilot student is `kd_logit`, but the full student spread is within
-single-seed noise. The factorial effects below should therefore be read as
-pipeline diagnostics and descriptive pilot statistics, not resolved causal
-estimates.
+The best student is `kd_logit` (test macro-F1 `0.6631`), but with a single seed the factorial effects
+below should be read as pipeline diagnostics and descriptive statistics, not
+resolved causal estimates.
 
 ## Student Ablation Table
 
@@ -67,7 +66,7 @@ Metric: `test_macro_f1`
 
 Positive estimates mean the factor or interaction increases the metric under
 standard +/-1 factorial coding. Magnitudes are informational for this
-single-seed pilot.
+single-seed run.
 
 | Effect | Kind | Estimate | Absolute |
 |---|---:|---:|---:|
@@ -81,7 +80,7 @@ single-seed pilot.
 
 ## Attention-Loss Caveat
 
-Attention KD used post-softmax attention probabilities in this pilot. Its
+Attention KD used post-softmax attention probabilities in this run. Its
 final loss magnitude is near-inert compared with CE, logit, and hidden
 losses, so the attention factor was only weakly applied. Fix this signal or
 explicitly document the caveat before scaling the experiment.
@@ -90,16 +89,16 @@ explicitly document the caveat before scaling the experiment.
 
 ### Condition Bars
 
-![Condition Bars](results/analysis/figures/condition_bars.png)
+![Condition Bars](figures/condition_bars.png)
 
 ### Main Effects
 
-![Main Effects](results/analysis/figures/main_effects.png)
+![Main Effects](figures/main_effects.png)
 
 ### Loss Magnitudes
 
-![Loss Magnitudes](results/analysis/figures/loss_magnitudes.png)
+![Loss Magnitudes](figures/loss_magnitudes.png)
 
 ### Calibration
 
-![Calibration](results/analysis/figures/calibration.png)
+![Calibration](figures/calibration.png)

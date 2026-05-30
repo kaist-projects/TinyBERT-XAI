@@ -21,9 +21,6 @@ from tinybert_xai.analysis.tables import (  # noqa: E402
 from tinybert_xai import ALL_DATASETS  # noqa: E402
 from tinybert_xai.conditions import all_conditions  # noqa: E402
 
-ANALYSIS_DIR = pathlib.Path("results") / "analysis"
-FIGURES_DIR = ANALYSIS_DIR / "figures"
-REPORT_PATH = pathlib.Path("REPORT.md")
 METRIC_COLUMNS = [
     "test_macro_f1",
     "test_micro_f1",
@@ -51,6 +48,7 @@ class Check:
 def main() -> None:
     args = _parse_args()
     dataset = args.dataset
+    analysis_dir, figures_dir, report_path = analysis_paths(dataset)
 
     df = load_runs(dataset)
     teacher = load_teacher(dataset)
@@ -59,12 +57,12 @@ def main() -> None:
     effects = pd.DataFrame()
     if all(check.passed for check in checks):
         effects = effects_table(df, "test_macro_f1")
-        ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
-        _remove_stale_artifacts()
-        figures = write_all_figures(df, teacher, effects, FIGURES_DIR)
-        report = _write_report(df, teacher, effects, checks, figures, dataset)
-        checks.append(_check_artifacts(figures, report))
-        _write_report(df, teacher, effects, checks, figures, dataset)
+        analysis_dir.mkdir(parents=True, exist_ok=True)
+        _remove_stale_artifacts(analysis_dir, figures_dir)
+        figures = write_all_figures(df, teacher, effects, figures_dir, dataset)
+        report = _write_report(df, teacher, effects, checks, figures, dataset, report_path)
+        checks.append(_check_artifacts(figures, report, analysis_dir, figures_dir))
+        _write_report(df, teacher, effects, checks, figures, dataset, report_path)
     else:
         checks.append(Check("artifacts written", False, "not attempted because input validation failed"))
 
@@ -72,6 +70,11 @@ def main() -> None:
 
     if not all(check.passed for check in checks):
         raise SystemExit(1)
+
+
+def analysis_paths(dataset: str) -> tuple[pathlib.Path, pathlib.Path, pathlib.Path]:
+    base = pathlib.Path("results") / "analysis" / dataset
+    return base, base / "figures", base / "REPORT.md"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -92,21 +95,22 @@ def _write_report(
     checks: list[Check],
     figures: list[pathlib.Path],
     dataset: str,
+    report_path: pathlib.Path,
 ) -> pathlib.Path:
-    REPORT_PATH.write_text(
-        render_factorial_report(df, teacher, effects, checks, figures, REPORT_PATH, dataset)
+    report_path.write_text(
+        render_factorial_report(df, teacher, effects, checks, figures, report_path, dataset)
     )
-    return REPORT_PATH
+    return report_path
 
 
-def _remove_stale_artifacts() -> None:
+def _remove_stale_artifacts(analysis_dir: pathlib.Path, figures_dir: pathlib.Path) -> None:
     for path in [
-        ANALYSIS_DIR / "factorial_report.md",
-        ANALYSIS_DIR / "student_ablation_table.md",
-        ANALYSIS_DIR / "main_effects_table.md",
+        analysis_dir / "factorial_report.md",
+        analysis_dir / "student_ablation_table.md",
+        analysis_dir / "main_effects_table.md",
     ]:
         path.unlink(missing_ok=True)
-    for path in FIGURES_DIR.glob("*.svg"):
+    for path in figures_dir.glob("*.svg"):
         path.unlink()
 
 
@@ -203,16 +207,21 @@ def _check_metric_ranges(df: pd.DataFrame) -> Check:
     )
 
 
-def _check_artifacts(figures: list[pathlib.Path], report: pathlib.Path) -> Check:
+def _check_artifacts(
+    figures: list[pathlib.Path],
+    report: pathlib.Path,
+    analysis_dir: pathlib.Path,
+    figures_dir: pathlib.Path,
+) -> Check:
     paths = figures + [report]
     missing = [str(path) for path in paths if not path.exists() or path.stat().st_size == 0]
-    unexpected_svg = [str(path) for path in FIGURES_DIR.glob("*.svg")]
+    unexpected_svg = [str(path) for path in figures_dir.glob("*.svg")]
     stale_tables = [
         str(path)
         for path in [
-            ANALYSIS_DIR / "factorial_report.md",
-            ANALYSIS_DIR / "student_ablation_table.md",
-            ANALYSIS_DIR / "main_effects_table.md",
+            analysis_dir / "factorial_report.md",
+            analysis_dir / "student_ablation_table.md",
+            analysis_dir / "main_effects_table.md",
         ]
         if path.exists()
     ]
@@ -259,7 +268,7 @@ def _print_report(
         print(f"  {row.effect:28s} {row.estimate:+.5f}")
 
     passed = all(check.passed for check in checks)
-    verdict = "GO to iter-7" if passed else "NO-GO"
+    verdict = "GO" if passed else "NO-GO"
     print(f"\nVerdict: {verdict}")
     if passed:
         print(

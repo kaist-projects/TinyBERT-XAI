@@ -18,18 +18,20 @@ FIGURE_DPI = 180
 CONDITION_ORDER = [condition.name for condition in all_conditions()]
 
 
-def write_all_figures(df: pd.DataFrame, teacher: pd.Series, effects: pd.DataFrame, out_dir: Path) -> list[Path]:
+def write_all_figures(
+    df: pd.DataFrame, teacher: pd.Series, effects: pd.DataFrame, out_dir: Path, dataset: str
+) -> list[Path]:
     """Write all iteration-6 figures as PNG files."""
     out_dir.mkdir(parents=True, exist_ok=True)
     written = []
-    written.extend(plot_condition_bars(df, teacher, out_dir))
+    written.extend(plot_condition_bars(df, teacher, out_dir, dataset))
     written.extend(plot_main_effects(effects, out_dir))
     written.extend(plot_loss_magnitudes(df, out_dir))
-    written.extend(plot_calibration(df, out_dir))
+    written.extend(plot_calibration(df, out_dir, dataset))
     return written
 
 
-def plot_condition_bars(df: pd.DataFrame, teacher: pd.Series, out_dir: Path) -> list[Path]:
+def plot_condition_bars(df: pd.DataFrame, teacher: pd.Series, out_dir: Path, dataset: str) -> list[Path]:
     frame = _ordered(df)
     ce = frame.loc[frame["condition"] == "ce_only", "test_macro_f1"].iloc[0]
 
@@ -48,7 +50,7 @@ def plot_condition_bars(df: pd.DataFrame, teacher: pd.Series, out_dir: Path) -> 
     for index, row in enumerate(frame.itertuples(index=False)):
         delta = row.test_macro_f1 - ce
         ax.text(index, row.test_macro_f1 + 0.001, f"{delta:+.3f}", ha="center", va="bottom", fontsize=8)
-    ax.set_title("TweetEval-sentiment test macro-F1 by condition")
+    ax.set_title(f"{dataset} test macro-F1 by condition")
     ax.set_xlabel("")
     ax.set_ylabel("Test macro-F1")
     ax.set_ylim(0.62, max(float(teacher["test_macro_f1"]), frame["test_macro_f1"].max()) + 0.02)
@@ -103,12 +105,12 @@ def plot_loss_magnitudes(df: pd.DataFrame, out_dir: Path) -> list[Path]:
     return _save(fig, out_dir / "loss_magnitudes")
 
 
-def plot_calibration(df: pd.DataFrame, out_dir: Path) -> list[Path]:
+def plot_calibration(df: pd.DataFrame, out_dir: Path, dataset: str) -> list[Path]:
     frame = _ordered(df)
 
     fig, ax = plt.subplots(figsize=(10, 4.8))
     sns.barplot(data=frame, x="condition", y="test_ece", order=CONDITION_ORDER, ax=ax)
-    ax.set_title("TweetEval-sentiment test ECE by condition")
+    ax.set_title(f"{dataset} test ECE by condition")
     ax.set_xlabel("")
     ax.set_ylabel("Expected calibration error")
     ax.tick_params(axis="x", rotation=35)
