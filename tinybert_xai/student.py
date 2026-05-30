@@ -119,6 +119,8 @@ def start_student_metadata(
             "config": spec.hf_config,
             "num_labels": spec.num_labels,
             "label_names": spec.label_names,
+            "input_type": spec.input_type,
+            "split_scheme": spec.split_scheme,
             "splits": {},
             "max_seq_length": cfg.max_seq_length,
             "truncation": True,

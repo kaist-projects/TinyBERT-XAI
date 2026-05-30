@@ -8,7 +8,7 @@ Usage
 -----
     conda activate tinybert-xai
     # from repo root
-    python scripts/01_train_teacher.py
+    python scripts/01_train_teacher.py --dataset imdb   # default: tweet_eval-sentiment
 
 Output
 ------
@@ -20,13 +20,15 @@ Output
 
 from __future__ import annotations
 
+import argparse
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
+from _dataset_cli import add_dataset_flag, dataset_from_args  # noqa: E402
+
 from tinybert_xai import (  # noqa: E402
-    DATASET_TWEETEVAL_SENTIMENT,
     Config,
     configure_reproducibility,
     fine_tune_teacher,
@@ -38,9 +40,15 @@ from tinybert_xai import (  # noqa: E402
 )
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Fine-tune the teacher (bert-base-uncased) on one dataset.")
+    add_dataset_flag(parser)
+    return parser.parse_args()
+
+
 def main() -> None:
     cfg = Config()
-    spec = DATASET_TWEETEVAL_SENTIMENT
+    spec = dataset_from_args(parse_args())
 
     configure_reproducibility(cfg.seed)
     device = resolve_device(cfg)

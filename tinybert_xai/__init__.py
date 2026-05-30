@@ -12,10 +12,14 @@ from tinybert_xai.conditions import (
     condition_from_flags,
 )
 from tinybert_xai.datasets import (
+    ALL_DATASETS,
+    DATASET_ANLI,
+    DATASET_IMDB,
     DATASET_TWEETEVAL_SENTIMENT,
     DatasetSpec,
     SentimentLabel,
     build_loader,
+    dataset_by_name,
     encode_batch,
     load_split,
 )
@@ -85,6 +89,10 @@ __all__ = [
     "DatasetSpec",
     "SentimentLabel",
     "DATASET_TWEETEVAL_SENTIMENT",
+    "DATASET_IMDB",
+    "DATASET_ANLI",
+    "ALL_DATASETS",
+    "dataset_by_name",
     "build_loader",
     "encode_batch",
     "load_split",

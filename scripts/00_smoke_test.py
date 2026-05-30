@@ -70,7 +70,7 @@ def main() -> None:
     student = load_classifier(cfg.student_checkpoint, spec.num_labels, device)
 
     raw = load_split(spec, "train").select(range(16))
-    batch = encode_batch(tokenizer, raw, max_length=cfg.max_seq_length, device=device)
+    batch = encode_batch(tokenizer, raw, spec, max_length=cfg.max_seq_length, device=device)
     inputs = {k: v for k, v in batch.items() if k != "labels"}
 
     with torch.no_grad():

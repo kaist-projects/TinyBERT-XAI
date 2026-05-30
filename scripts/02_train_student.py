@@ -30,10 +30,10 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
+from _dataset_cli import add_dataset_flag, dataset_from_args  # noqa: E402
 from _student_cli import add_signal_flags, condition_from_args  # noqa: E402
 
 from tinybert_xai import (  # noqa: E402
-    DATASET_TWEETEVAL_SENTIMENT,
     Config,
     configure_reproducibility,
     evaluate_saved_student,
@@ -51,6 +51,7 @@ from tinybert_xai import (  # noqa: E402
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train a TinyBERT student for one distillation condition.")
+    add_dataset_flag(parser)
     add_signal_flags(parser)
     parser.add_argument("--eval", action="store_true", help="evaluate on dev/test after training completes")
     return parser.parse_args()
@@ -90,8 +91,8 @@ def evaluate_student(cfg, spec, cond, device, teacher_model):
 
 def main() -> None:
     cfg = Config()
-    spec = DATASET_TWEETEVAL_SENTIMENT
     args = parse_args()
+    spec = dataset_from_args(args)
     cond = condition_from_args(args)
 
     configure_reproducibility(cfg.seed)
