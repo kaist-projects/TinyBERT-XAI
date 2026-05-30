@@ -34,13 +34,23 @@ def write_all_figures(
 def plot_condition_bars(df: pd.DataFrame, teacher: pd.Series, out_dir: Path, dataset: str) -> list[Path]:
     frame = _ordered(df)
     ce = frame.loc[frame["condition"] == "ce_only", "test_macro_f1"].iloc[0]
+    teacher_f1 = float(teacher["test_macro_f1"])
+    ymin, ymax = _metric_ylim(frame["test_macro_f1"], teacher_f1)
+    yspan = ymax - ymin
+    label_offset = max(yspan * 0.03, 0.001)
 
     fig, ax = plt.subplots(figsize=(10, 5))
-    sns.barplot(data=frame, x="condition", y="test_macro_f1", order=CONDITION_ORDER, ax=ax)
-    ax.axhline(float(teacher["test_macro_f1"]), color="#4c566a", linestyle="--", linewidth=1.4)
+    ax.bar(
+        range(len(frame)),
+        frame["test_macro_f1"] - ymin,
+        bottom=ymin,
+        color="#3274a1",
+        width=0.8,
+    )
+    ax.axhline(teacher_f1, color="#4c566a", linestyle="--", linewidth=1.4)
     ax.text(
         len(CONDITION_ORDER) - 0.6,
-        float(teacher["test_macro_f1"]) + 0.001,
+        min(teacher_f1 + label_offset, ymax - label_offset),
         "teacher",
         ha="right",
         va="bottom",
@@ -49,13 +59,22 @@ def plot_condition_bars(df: pd.DataFrame, teacher: pd.Series, out_dir: Path, dat
     )
     for index, row in enumerate(frame.itertuples(index=False)):
         delta = row.test_macro_f1 - ce
-        ax.text(index, row.test_macro_f1 + 0.001, f"{delta:+.3f}", ha="center", va="bottom", fontsize=8)
+        ax.text(
+            index,
+            min(row.test_macro_f1 + label_offset, ymax - label_offset),
+            f"{delta:+.3f}",
+            ha="center",
+            va="bottom",
+            fontsize=8,
+        )
     ax.set_title(f"{dataset} test macro-F1 by condition")
     ax.set_xlabel("")
     ax.set_ylabel("Test macro-F1")
-    ax.set_ylim(0.62, max(float(teacher["test_macro_f1"]), frame["test_macro_f1"].max()) + 0.02)
+    ax.set_ylim(ymin, ymax)
+    ax.set_xticks(range(len(frame)))
+    ax.set_xticklabels(frame["condition"])
     ax.tick_params(axis="x", rotation=35)
-    fig.tight_layout()
+    fig.subplots_adjust(bottom=0.28, top=0.88)
     return _save(fig, out_dir / "condition_bars")
 
 
@@ -122,6 +141,14 @@ def _ordered(df: pd.DataFrame) -> pd.DataFrame:
     frame = df.copy()
     frame["condition"] = pd.Categorical(frame["condition"], CONDITION_ORDER, ordered=True)
     return frame.sort_values("condition")
+
+
+def _metric_ylim(values: pd.Series, reference: float) -> tuple[float, float]:
+    lower = float(min(values.min(), reference))
+    upper = float(max(values.max(), reference))
+    span = max(upper - lower, 0.01)
+    padding = max(span * 0.15, 0.01)
+    return max(0.0, lower - padding), min(1.0, upper + padding)
 
 
 def _save(fig: plt.Figure, stem: Path) -> list[Path]:
