@@ -1,0 +1,157 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "teacher-davidson-2026-05-30T07:42:16Z",
+    "stage": "teacher",
+    "condition": null
+  },
+  "dataset": {
+    "name": "tdavidson/hate_speech_offensive",
+    "config": null,
+    "num_labels": 3,
+    "label_names": [
+      "hate",
+      "offensive",
+      "neither"
+    ],
+    "input_type": "single_text",
+    "split_scheme": "stratified_dev_0.1_test_0.1_seed42",
+    "source_fingerprint": null,
+    "splits": {
+      "train": 19825,
+      "validation": 2479,
+      "test": 2479
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "checkpoint": "bert-base-uncased",
+    "tokenizer": "bert-base-uncased",
+    "parameter_count": 109484547
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 1,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/teachers/davidson/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24117.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 258.85609,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 1240,
+        "epoch_time_seconds": 81.93776,
+        "loss_total": 0.29304,
+        "losses": {
+          "ce": 0.29304
+        },
+        "grad_norm_mean": 4.08258,
+        "dev": {
+          "macro_f1": 0.75761,
+          "micro_f1": 0.91367,
+          "accuracy": 0.91367,
+          "ECE": 0.00525,
+          "NLL": 0.22802,
+          "Brier": 0.12352
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 2480,
+        "epoch_time_seconds": 81.6572,
+        "loss_total": 0.21327,
+        "losses": {
+          "ce": 0.21327
+        },
+        "grad_norm_mean": 3.7428,
+        "dev": {
+          "macro_f1": 0.76329,
+          "micro_f1": 0.90641,
+          "accuracy": 0.90641,
+          "ECE": 0.02571,
+          "NLL": 0.24512,
+          "Brier": 0.13194
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 3720,
+        "epoch_time_seconds": 81.66197,
+        "loss_total": 0.16277,
+        "losses": {
+          "ce": 0.16277
+        },
+        "grad_norm_mean": 4.06213,
+        "dev": {
+          "macro_f1": 0.74268,
+          "micro_f1": 0.91327,
+          "accuracy": 0.91327,
+          "ECE": 0.02632,
+          "NLL": 0.24346,
+          "Brier": 0.12708
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.76329,
+      "micro_f1": 0.90641,
+      "accuracy": 0.90641,
+      "per_class_f1": [0.49242, 0.94508, 0.85237],
+      "confusion_matrix": [
+        [65, 68, 10],
+        [49, 1850, 21],
+        [7, 77, 332]
+      ],
+      "ECE": 0.02571,
+      "NLL": 0.24512,
+      "Brier": 0.13194
+    },
+    "test": {
+      "macro_f1": 0.75045,
+      "micro_f1": 0.90117,
+      "accuracy": 0.90117,
+      "per_class_f1": [0.46275, 0.93995, 0.84864],
+      "confusion_matrix": [
+        [59, 82, 2],
+        [46, 1847, 27],
+        [7, 81, 328]
+      ],
+      "ECE": 0.03002,
+      "NLL": 0.26367,
+      "Brier": 0.14284
+    }
+  }
+}
