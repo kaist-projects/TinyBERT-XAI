@@ -8,13 +8,16 @@ from tinybert_xai import (
     DATASET_FEVER,
     DATASET_HATEVAL,
     DATASET_IMDB,
+    DATASET_MULTIVALUE,
     DATASET_TWEETEVAL_SENTIMENT,
+    DATASET_VARDIAL,
     LocalCsvSource,
     dataset_by_name,
     load_split,
 )
 from tinybert_xai.datasets import (
     DatasetSpec,
+    _apply_label_map,
     _maybe_subsample_train,
     _tokenize_split,
     stratified_split_partition,
@@ -121,6 +124,23 @@ def test_subsample_is_noop_when_unset():
     assert _maybe_subsample_train(ds, spec) is ds
 
 
+def test_hf_label_map_maps_string_labels_to_ints():
+    ds = Dataset.from_dict({"sentence": ["a", "b"], "label": ["ZH", "BE"]})
+    spec = DatasetSpec(
+        "t", "f", "p", None, 4, ["BE", "BS", "LU", "ZH"],
+        text_keys=("sentence",),
+        hf_label_map={"BE": 0, "BS": 1, "LU": 2, "ZH": 3},
+    )
+    out = _apply_label_map(ds, spec)
+    assert out["label"] == [3, 0]
+
+
+def test_hf_label_map_is_noop_when_unset():
+    ds = Dataset.from_dict({"text": ["a"], "label": [1]})
+    spec = DatasetSpec("t", "f", "p", None, 2, ["a", "b"], text_keys=("text",))
+    assert _apply_label_map(ds, spec) is ds
+
+
 def test_local_csv_split_filters_by_split_column_and_maps_labels(tmp_path):
     csv = tmp_path / "d.csv"
     csv.write_text("text,label,split\na,hate,train\nb,nothate,train\nc,hate,dev\nd,nothate,test\n")
@@ -147,8 +167,8 @@ def test_local_csv_split_filters_by_split_column_and_maps_labels(tmp_path):
     assert test["text"] == ["d"] and test["label"] == [0]
 
 
-def test_local_csv_missing_file_raises_helpful_error():
-    spec = DATASET_DYNAHATE
+@pytest.mark.parametrize("spec", [DATASET_DYNAHATE, DATASET_MULTIVALUE])
+def test_local_csv_missing_file_raises_helpful_error(spec):
     with pytest.raises(FileNotFoundError, match="Download it"):
         load_split(spec, "train")
 
@@ -161,6 +181,8 @@ def test_registry_round_trips_known_datasets():
     assert dataset_by_name("tweet_eval-sentiment") is DATASET_TWEETEVAL_SENTIMENT
     assert dataset_by_name("fever") is DATASET_FEVER
     assert dataset_by_name("hateval") is DATASET_HATEVAL
+    assert dataset_by_name("vardial") is DATASET_VARDIAL
+    assert dataset_by_name("multivalue") is DATASET_MULTIVALUE
     with pytest.raises(KeyError):
         dataset_by_name("does-not-exist")
 
@@ -177,3 +199,7 @@ def test_spec_input_type_and_split_scheme():
     assert DATASET_FEVER.split_scheme == "stratified_test_0.1_sub50000_seed42"
     assert DATASET_HATEVAL.input_type == "single_text"
     assert DATASET_HATEVAL.split_scheme == "official"
+    assert DATASET_VARDIAL.input_type == "single_text"
+    assert DATASET_VARDIAL.split_scheme == "stratified_dev_0.1_test_0.1_seed42"
+    assert DATASET_MULTIVALUE.input_type == "single_text"
+    assert DATASET_MULTIVALUE.split_scheme == "official_csv"

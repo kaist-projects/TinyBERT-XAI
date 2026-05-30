@@ -43,11 +43,16 @@ registered), and 🔒 needs gated access.
 | DynaHate (hate speech) | `dynahate` | [bvidgen/Dynamically-Generated-Hate-Speech-Dataset](https://github.com/bvidgen/Dynamically-Generated-Hate-Speech-Dataset) | single | ✅ (manual CSV) |
 | HatEval (hate speech) | `hateval` | [valeriobasile/HatEval](https://huggingface.co/datasets/valeriobasile/HatEval) | single | ✅ 🔒 (gated) |
 | FEVER (NLI) | `fever` | [pietrolesci/nli_fever](https://huggingface.co/datasets/pietrolesci/nli_fever) | pair | ✅ |
-| Aepli/VarDial-2023 (dialects) | `vardial` | [VarDial 2023](https://sites.google.com/view/vardial-2023) | single | ⬜ planned |
-| Multi-VALUE (dialects) | `multivalue` | [SALT-NLP/multi-value](https://github.com/SALT-NLP/multi-value) | single | ⬜ planned |
+| VarDial / Swiss-German (dialects) | `vardial` | [statworx/swiss-dialects](https://huggingface.co/datasets/statworx/swiss-dialects) | single | ✅ |
+| Multi-VALUE (dialects) | `multivalue` | [SALT-NLP/multi-value](https://github.com/SALT-NLP/multi-value) | single | ✅ (generated CSV) |
 
 Datasets with no official validation/test split are partitioned with a seed-42
-stratified split (IMDB: dev only; Davidson: 80/10/10). FEVER's official test split
+stratified split (IMDB: dev only; Davidson and VarDial: 80/10/10). VarDial
+(`statworx/swiss-dialects`) is single-split Swiss-German dialect ID whose string
+labels are mapped to ints. Multi-VALUE ships no labeled data — it is a dialect
+transformation toolkit; `scripts/build_multivalue.py` (needs `pip install value-nlp`)
+generates a binary SAE-vs-dialect CSV at `data/multivalue/multivalue.csv` (gitignored)
+whose `split` column is used as-is. FEVER's official test split
 ships unlabeled, so its `dev` split is used for validation and a seed-42 stratified
 test set is carved from train; train is also subsampled to 50K (seed-42, stratified)
 to keep the 3-epoch budget comparable across datasets. HatEval is HF-gated — accept
