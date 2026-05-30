@@ -18,6 +18,7 @@ from tinybert_xai.analysis.plots import write_all_figures  # noqa: E402
 from tinybert_xai.analysis.tables import (  # noqa: E402
     render_factorial_report,
 )
+from tinybert_xai import ALL_DATASETS  # noqa: E402
 from tinybert_xai.conditions import all_conditions  # noqa: E402
 
 ANALYSIS_DIR = pathlib.Path("results") / "analysis"
@@ -75,7 +76,12 @@ def main() -> None:
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("dataset", nargs="?", default="tweet_eval-sentiment")
+    parser.add_argument(
+        "dataset",
+        nargs="?",
+        default="tweet_eval-sentiment",
+        choices=[spec.name for spec in ALL_DATASETS],
+    )
     return parser.parse_args()
 
 
