@@ -1,14 +1,13 @@
 {
   "schema_version": "2",
   "run": {
-    "run_id": "teacher-tweet_eval-sentiment-2026-05-28T10:17:15Z",
+    "run_id": "teacher-tweet_eval-sentiment-2026-05-29T17:08:24Z",
     "stage": "teacher",
     "condition": null
   },
   "dataset": {
     "name": "cardiffnlp/tweet_eval",
     "config": "sentiment",
-    "family": "sentiment",
     "num_labels": 3,
     "label_names": [
       "negative",
@@ -53,7 +52,6 @@
   "reproducibility": {
     "seed": 42,
     "deterministic_algorithms": true,
-    "warn_only": true,
     "cublas_workspace_config": ":4096:8",
     "shuffle_seed_scheme": "seed + epoch"
   },
@@ -61,26 +59,16 @@
     "device": "cuda:0",
     "gpu_model": "NVIDIA GeForce RTX 3090",
     "gpu_memory_total_mb": 24118.25,
-    "torch_cuda": "12.4",
-    "package_versions": {
-      "torch": "2.5.1+cu124",
-      "transformers": "4.49.0",
-      "datasets": "3.6.0",
-      "tokenizers": "0.21.4",
-      "numpy": "1.26.4",
-      "sklearn": "1.5.2",
-      "python": "3.12.13"
-    }
+    "torch_cuda": "12.4"
   },
   "training": {
     "epochs_completed": 3,
-    "best_dev_macro_f1": 0.71552,
-    "train_time_seconds": 694.49996,
+    "train_time_seconds": 679.70823,
     "history": [
       {
         "epoch": 0,
         "global_step": 2851,
-        "epoch_time_seconds": 241.7026,
+        "epoch_time_seconds": 202.14356,
         "loss_total": 0.65471,
         "losses": {
           "ce": 0.65471
@@ -98,7 +86,7 @@
       {
         "epoch": 1,
         "global_step": 5702,
-        "epoch_time_seconds": 212.12472,
+        "epoch_time_seconds": 234.51003,
         "loss_total": 0.47283,
         "losses": {
           "ce": 0.47283
@@ -116,7 +104,7 @@
       {
         "epoch": 2,
         "global_step": 8553,
-        "epoch_time_seconds": 228.62007,
+        "epoch_time_seconds": 230.97415,
         "loss_total": 0.28951,
         "losses": {
           "ce": 0.28951
@@ -162,13 +150,5 @@
       "NLL": 0.70767,
       "Brier": 0.43086
     }
-  },
-  "efficiency": {
-    "latency_p50_ms": 50.33626,
-    "latency_p95_ms": 50.59717,
-    "throughput_samples_per_sec": 635.32942,
-    "model_size_mb": 417.72769,
-    "parameter_count": 109484547,
-    "gpu_memory_mb": 990.81689
   }
 }
