@@ -144,8 +144,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--num-samples",
         type=int,
-        default=4_000,
-        help="total base sentences to label (half SAE, half dialect); default 4000",
+        default=10_000,
+        help="total base sentences to label (half SAE, half dialect); default 10000",
     )
     return parser.parse_args()
 
