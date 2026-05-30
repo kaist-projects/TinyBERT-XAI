@@ -1,23 +1,9 @@
 # TinyBERT-XAI
+![cover](docs/images/02-readme-cover.png)  
 
 TinyBERT-XAI is a KAIST CS50700 Deep Learning final project that replicates and
 extends TinyBERT-style task distillation with granular control over knowledge
 distillation (KD) loss components.
-
-The project fine-tunes a `bert-base-uncased` teacher, distills into
-`huawei-noah/TinyBERT_General_4L_312D` students, and compares CE-only training
-against Logit KD, Hidden KD, Attention KD, and all factorial combinations of
-those three KD signals. Datasets are registered in a small registry and selected
-with `--dataset`; the completed pilot is TweetEval sentiment
-(`cardiffnlp/tweet_eval`, config `sentiment`), with IMDB and ANLI (sentence-pair)
-also wired up.
-
-## Overview
-
-The main experimental question is how individual KD signals contribute to a
-TinyBERT student's downstream behavior when they can be enabled or disabled
-independently. Instead of only comparing an additive ladder of methods, this
-repository defines a full `2^3` factorial ablation over:
 
 - Logit KD: match teacher output distributions.
 - Hidden KD: match selected teacher hidden states through learned projections.
@@ -44,7 +30,6 @@ registered), and 🔒 needs gated access.
 | HatEval (hate speech) | `hateval` | [valeriobasile/HatEval](https://huggingface.co/datasets/valeriobasile/HatEval) | single | ✅ 🔒 (gated) |
 | FEVER (NLI) | `fever` | [pietrolesci/nli_fever](https://huggingface.co/datasets/pietrolesci/nli_fever) | pair | ✅ |
 | VarDial / Swiss-German (dialects) | `vardial` | [statworx/swiss-dialects](https://huggingface.co/datasets/statworx/swiss-dialects) | single | ✅ |
-| Multi-VALUE (dialects) | `multivalue` | [SALT-NLP/multi-value](https://github.com/SALT-NLP/multi-value) | single | ✅ (generated CSV) |
 
 Datasets with no official validation/test split are partitioned with a seed-42
 stratified split (IMDB: dev only; Davidson and VarDial: 80/10/10). VarDial
