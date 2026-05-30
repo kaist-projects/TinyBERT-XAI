@@ -12,7 +12,7 @@ from tqdm.auto import tqdm
 
 from tinybert_xai.checkpoints import load_state_dict, results_dir, save_state_dict, student_dir, validate_run_artifacts
 from tinybert_xai.conditions import ConditionSpec
-from tinybert_xai.datasets import build_loader
+from tinybert_xai.datasets import build_loader, source_fingerprint
 from tinybert_xai.earlystop import EarlyStopper
 from tinybert_xai.eval import (
     EvaluationResult,
@@ -121,6 +121,7 @@ def start_student_metadata(
             "label_names": spec.label_names,
             "input_type": spec.input_type,
             "split_scheme": spec.split_scheme,
+            "source_fingerprint": source_fingerprint(spec),
             "splits": {},
             "max_seq_length": cfg.max_seq_length,
             "truncation": True,

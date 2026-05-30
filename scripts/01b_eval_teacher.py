@@ -31,6 +31,7 @@ from tinybert_xai import (  # noqa: E402
     Config,
     configure_reproducibility,
     evaluate_saved_teacher,
+    format_teacher_eval_summary,
     resolve_device,
     save_teacher_evaluation_result,
 )
@@ -54,14 +55,7 @@ def main() -> None:
     result = evaluate_saved_teacher(cfg, spec, device=device)
     print("Evaluation complete.")
 
-    print(f"  dev={result.dev_size}  test={result.test_size}")
-    print(f"  dev macro-F1  : {result.dev_result.macro_f1:.4f}")
-    print(f"  dev accuracy  : {result.dev_result.accuracy:.4f}")
-    print(f"  dev ECE       : {result.dev_result.ECE:.4f}")
-    print(f"  test macro-F1 : {result.test_result.macro_f1:.4f}")
-    print(f"  test accuracy : {result.test_result.accuracy:.4f}")
-    print(f"  test ECE      : {result.test_result.ECE:.4f}")
-    print(f"  per-class F1  : {[f'{v:.3f}' for v in result.test_result.per_class_f1]}")
+    print(format_teacher_eval_summary(result))
 
     save_teacher_evaluation_result(result)
     print(f"\nrun_metadata.json updated: {result.metadata_path}")

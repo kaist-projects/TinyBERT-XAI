@@ -1,5 +1,7 @@
+import hashlib
 from dataclasses import dataclass, field
 from enum import IntEnum
+from pathlib import Path
 
 import torch
 from datasets import ClassLabel, Dataset, concatenate_datasets, load_dataset
@@ -10,10 +12,20 @@ _DEV_SPLIT_SEED = 42
 
 
 @dataclass(frozen=True)
+class LocalCsvSource:
+    """A dataset distributed as a single local CSV with an in-file split column."""
+
+    path: str
+    split_column: str
+    label_map: dict[str, int]
+    download_url: str | None = None
+
+
+@dataclass(frozen=True)
 class DatasetSpec:
     name: str
     family: str
-    hf_path: str
+    hf_path: str | None
     hf_config: str | None
     num_labels: int
     label_names: list[str]
@@ -23,6 +35,8 @@ class DatasetSpec:
         default_factory=lambda: {"train": "train", "validation": "validation", "test": "test"}
     )
     dev_split: float | None = None
+    test_split: float | None = None
+    local_csv: LocalCsvSource | None = None
 
     @property
     def input_type(self) -> str:
@@ -30,9 +44,16 @@ class DatasetSpec:
 
     @property
     def split_scheme(self) -> str:
-        if self.dev_split is None:
+        if self.local_csv is not None:
+            return "official_csv"
+        tags = []
+        if self.dev_split is not None:
+            tags.append(f"dev_{self.dev_split}")
+        if self.test_split is not None:
+            tags.append(f"test_{self.test_split}")
+        if not tags:
             return "official"
-        return f"stratified_dev_{self.dev_split}_seed{_DEV_SPLIT_SEED}"
+        return "stratified_" + "_".join(tags) + f"_seed{_DEV_SPLIT_SEED}"
 
 
 class SentimentLabel(IntEnum):
@@ -80,7 +101,47 @@ DATASET_ANLI = DatasetSpec(
 )
 
 
-ALL_DATASETS = (DATASET_TWEETEVAL_SENTIMENT, DATASET_IMDB, DATASET_ANLI)
+DATASET_DAVIDSON = DatasetSpec(
+    name="davidson",
+    family="hate",
+    hf_path="tdavidson/hate_speech_offensive",
+    hf_config=None,
+    num_labels=3,
+    label_names=["hate", "offensive", "neither"],
+    text_keys=("tweet",),
+    label_key="class",
+    split_sources={"train": "train"},
+    dev_split=0.1,
+    test_split=0.1,
+)
+
+
+DATASET_DYNAHATE = DatasetSpec(
+    name="dynahate",
+    family="hate",
+    hf_path=None,
+    hf_config=None,
+    num_labels=2,
+    label_names=["nothate", "hate"],
+    text_keys=("text",),
+    label_key="label",
+    split_sources={"train": "train", "validation": "dev", "test": "test"},
+    local_csv=LocalCsvSource(
+        path="data/dynahate/dynahate_v0.2.3.csv",
+        split_column="split",
+        label_map={"nothate": 0, "hate": 1},
+        download_url="https://github.com/bvidgen/Dynamically-Generated-Hate-Speech-Dataset",
+    ),
+)
+
+
+ALL_DATASETS = (
+    DATASET_TWEETEVAL_SENTIMENT,
+    DATASET_IMDB,
+    DATASET_ANLI,
+    DATASET_DAVIDSON,
+    DATASET_DYNAHATE,
+)
 DATASETS_BY_NAME = {spec.name: spec for spec in ALL_DATASETS}
 
 
@@ -94,13 +155,26 @@ def dataset_by_name(name: str) -> DatasetSpec:
 def load_split(spec: DatasetSpec, split: str) -> Dataset:
     """Resolve a canonical split (``train``/``validation``/``test``) to a Dataset.
 
-    Hides per-dataset layout from the pipeline: concatenates multi-source splits
-    (e.g. ANLI rounds) and synthesizes a seed-42 stratified dev set from train
-    when the dataset ships no official validation split (e.g. IMDB).
+    Hides per-dataset layout from the pipeline: reads a local CSV with an in-file
+    split column (e.g. DynaHate), concatenates multi-source splits (e.g. ANLI
+    rounds), and synthesizes seed-42 stratified dev/test sets from train when the
+    dataset ships no official split (dev for IMDB; dev+test for Davidson).
     """
-    if spec.dev_split is not None and split in ("train", "validation"):
+    if spec.local_csv is not None:
+        return _load_local_csv_split(spec, split)
+    if _is_synthesized(spec, split):
         return _synthesized_split(spec, split)
     return _load_sources(spec, spec.split_sources[split])
+
+
+def source_fingerprint(spec: DatasetSpec) -> dict | None:
+    """Raw-file fingerprint for local-source datasets; ``None`` for HF datasets."""
+    if spec.local_csv is None:
+        return None
+    path = Path(spec.local_csv.path)
+    if not path.exists():
+        return None
+    return {"raw_file": str(path), "sha256": _sha256(path)}
 
 
 def encode_batch(
@@ -172,21 +246,73 @@ def _load_one(spec: DatasetSpec, hf_split: str) -> Dataset:
     return ds
 
 
+def _is_synthesized(spec: DatasetSpec, split: str) -> bool:
+    needs_dev = "validation" not in spec.split_sources and spec.dev_split is not None
+    needs_test = "test" not in spec.split_sources and spec.test_split is not None
+    return {
+        "validation": needs_dev,
+        "test": needs_test,
+        "train": needs_dev or needs_test,
+    }.get(split, False)
+
+
 def _synthesized_split(spec: DatasetSpec, split: str) -> Dataset:
-    train = _ensure_classlabel(_load_sources(spec, spec.split_sources["train"]), spec)
-    train_part, dev_part = stratified_dev_partition(train, spec.dev_split, spec.label_key)
-    return train_part if split == "train" else dev_part
+    pool = _ensure_classlabel(_load_sources(spec, spec.split_sources["train"]), spec)
+    parts = stratified_split_partition(
+        pool, dev_split=spec.dev_split, test_split=spec.test_split, label_key=spec.label_key
+    )
+    return parts[split]
 
 
-def stratified_dev_partition(ds: Dataset, dev_split: float, label_key: str) -> tuple[Dataset, Dataset]:
-    """Deterministically carve a seed-42 stratified dev set out of ``ds``.
+def stratified_split_partition(
+    ds: Dataset,
+    *,
+    dev_split: float | None,
+    test_split: float | None,
+    label_key: str,
+) -> dict[str, Dataset]:
+    """Deterministically carve seed-42 stratified dev/test sets out of ``ds``.
 
-    Returns ``(train_remainder, dev)``. The two partitions are disjoint and the
-    split is reproducible across calls (fixed seed), so asking for ``train`` and
-    ``validation`` separately yields a consistent, leak-free partition.
+    Returns a dict keyed by canonical split name (``train`` always present,
+    ``validation``/``test`` present when their fraction is given). Test is carved
+    from the pool, then dev from the remainder (relative fraction so its size is
+    ``dev_split`` of the *pool*), then train is the rest. The split is reproducible
+    across calls (fixed seed), so asking for each split separately yields a
+    consistent, leak-free partition.
     """
-    parts = ds.train_test_split(test_size=dev_split, seed=_DEV_SPLIT_SEED, stratify_by_column=label_key)
-    return parts["train"], parts["test"]
+    parts: dict[str, Dataset] = {}
+    remaining = ds
+    if test_split is not None:
+        carved = remaining.train_test_split(test_size=test_split, seed=_DEV_SPLIT_SEED, stratify_by_column=label_key)
+        parts["test"], remaining = carved["test"], carved["train"]
+    if dev_split is not None:
+        relative = dev_split / (1 - (test_split or 0))
+        carved = remaining.train_test_split(test_size=relative, seed=_DEV_SPLIT_SEED, stratify_by_column=label_key)
+        parts["validation"], remaining = carved["test"], carved["train"]
+    parts["train"] = remaining
+    return parts
+
+
+def _load_local_csv_split(spec: DatasetSpec, split: str) -> Dataset:
+    src = spec.local_csv
+    path = Path(src.path)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{spec.name}: expected the dataset CSV at {src.path!r}. "
+            f"Download it from {src.download_url} and save it there."
+        )
+    ds = load_dataset("csv", data_files=str(path), split="train")
+    official = spec.split_sources[split]
+    ds = ds.filter(lambda row: row[src.split_column] == official)
+    return ds.map(lambda row: {spec.label_key: src.label_map[row[spec.label_key]]})
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _ensure_classlabel(ds: Dataset, spec: DatasetSpec) -> Dataset:

@@ -1,8 +1,17 @@
 import pytest
 from datasets import ClassLabel, Dataset, Features, Value
 
-from tinybert_xai import DATASET_ANLI, DATASET_IMDB, DATASET_TWEETEVAL_SENTIMENT, dataset_by_name
-from tinybert_xai.datasets import DatasetSpec, _tokenize_split, stratified_dev_partition
+from tinybert_xai import (
+    DATASET_ANLI,
+    DATASET_DAVIDSON,
+    DATASET_DYNAHATE,
+    DATASET_IMDB,
+    DATASET_TWEETEVAL_SENTIMENT,
+    LocalCsvSource,
+    dataset_by_name,
+    load_split,
+)
+from tinybert_xai.datasets import DatasetSpec, _tokenize_split, stratified_split_partition
 
 MAX_LEN = 8
 
@@ -43,26 +52,81 @@ def test_sentence_pair_tokenization_marks_segment_b():
     assert out["token_type_ids"].sum().item() > 0  # segment B present
 
 
-def test_stratified_dev_partition_is_disjoint_deterministic_and_stratified():
-    n = 200
+def _labelled_dataset(n: int) -> Dataset:
     features = Features({"idx": Value("int64"), "label": ClassLabel(num_classes=2)})
-    ds = Dataset.from_dict({"idx": list(range(n)), "label": [i % 2 for i in range(n)]}, features=features)
+    return Dataset.from_dict({"idx": list(range(n)), "label": [i % 2 for i in range(n)]}, features=features)
 
-    train, dev = stratified_dev_partition(ds, 0.25, "label")
-    train_idx, dev_idx = set(train["idx"]), set(dev["idx"])
+
+def test_dev_only_partition_is_disjoint_deterministic_and_stratified():
+    ds = _labelled_dataset(200)
+
+    parts = stratified_split_partition(ds, dev_split=0.25, test_split=None, label_key="label")
+    assert "test" not in parts
+    train_idx, dev_idx = set(parts["train"]["idx"]), set(parts["validation"]["idx"])
 
     assert train_idx.isdisjoint(dev_idx)
-    assert train_idx | dev_idx == set(range(n))
+    assert train_idx | dev_idx == set(range(200))
     assert len(dev_idx) == 50
-    assert sum(dev["label"]) == 25  # 50/50 classes preserved
+    assert sum(parts["validation"]["label"]) == 25  # 50/50 classes preserved
 
-    train2, dev2 = stratified_dev_partition(ds, 0.25, "label")
-    assert set(dev2["idx"]) == dev_idx  # reproducible
+    again = stratified_split_partition(ds, dev_split=0.25, test_split=None, label_key="label")
+    assert set(again["validation"]["idx"]) == dev_idx  # reproducible
+
+
+def test_three_way_partition_sizes_disjoint_and_stratified():
+    ds = _labelled_dataset(200)
+
+    parts = stratified_split_partition(ds, dev_split=0.1, test_split=0.1, label_key="label")
+    train_idx = set(parts["train"]["idx"])
+    dev_idx = set(parts["validation"]["idx"])
+    test_idx = set(parts["test"]["idx"])
+
+    assert train_idx.isdisjoint(dev_idx) and train_idx.isdisjoint(test_idx) and dev_idx.isdisjoint(test_idx)
+    assert train_idx | dev_idx | test_idx == set(range(200))
+    assert (len(train_idx), len(dev_idx), len(test_idx)) == (160, 20, 20)  # 80/10/10
+    assert sum(parts["validation"]["label"]) == 10 and sum(parts["test"]["label"]) == 10
+
+    again = stratified_split_partition(ds, dev_split=0.1, test_split=0.1, label_key="label")
+    assert set(again["test"]["idx"]) == test_idx  # reproducible
+
+
+def test_local_csv_split_filters_by_split_column_and_maps_labels(tmp_path):
+    csv = tmp_path / "d.csv"
+    csv.write_text("text,label,split\na,hate,train\nb,nothate,train\nc,hate,dev\nd,nothate,test\n")
+    spec = DatasetSpec(
+        name="x",
+        family="hate",
+        hf_path=None,
+        hf_config=None,
+        num_labels=2,
+        label_names=["nothate", "hate"],
+        text_keys=("text",),
+        label_key="label",
+        split_sources={"train": "train", "validation": "dev", "test": "test"},
+        local_csv=LocalCsvSource(path=str(csv), split_column="split", label_map={"nothate": 0, "hate": 1}),
+    )
+
+    train = load_split(spec, "train")
+    assert sorted(train["text"]) == ["a", "b"]
+    assert set(train["label"]) == {0, 1}  # strings mapped to ints
+
+    dev = load_split(spec, "validation")
+    assert dev["text"] == ["c"] and dev["label"] == [1]
+    test = load_split(spec, "test")
+    assert test["text"] == ["d"] and test["label"] == [0]
+
+
+def test_local_csv_missing_file_raises_helpful_error():
+    spec = DATASET_DYNAHATE
+    with pytest.raises(FileNotFoundError, match="Download it"):
+        load_split(spec, "train")
 
 
 def test_registry_round_trips_known_datasets():
     assert dataset_by_name("imdb") is DATASET_IMDB
     assert dataset_by_name("anli") is DATASET_ANLI
+    assert dataset_by_name("davidson") is DATASET_DAVIDSON
+    assert dataset_by_name("dynahate") is DATASET_DYNAHATE
     assert dataset_by_name("tweet_eval-sentiment") is DATASET_TWEETEVAL_SENTIMENT
     with pytest.raises(KeyError):
         dataset_by_name("does-not-exist")
@@ -73,3 +137,6 @@ def test_spec_input_type_and_split_scheme():
     assert DATASET_IMDB.split_scheme == "stratified_dev_0.1_seed42"
     assert DATASET_ANLI.input_type == "sentence_pair"
     assert DATASET_ANLI.split_scheme == "official"
+    assert DATASET_DAVIDSON.split_scheme == "stratified_dev_0.1_test_0.1_seed42"
+    assert DATASET_DYNAHATE.input_type == "single_text"
+    assert DATASET_DYNAHATE.split_scheme == "official_csv"
