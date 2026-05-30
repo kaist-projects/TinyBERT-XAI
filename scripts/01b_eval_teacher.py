@@ -10,22 +10,24 @@ Usage
 -----
     conda activate tinybert-xai
     # from repo root
-    python scripts/01b_eval_teacher.py
+    python scripts/01b_eval_teacher.py --dataset tweet_eval-sentiment
 
 Writes
 ------
-    results/teachers/tweet_eval-sentiment/run_metadata.json  (patched in-place)
+    results/teachers/<dataset>/run_metadata.json  (patched in-place)
 """
 
 from __future__ import annotations
 
+import argparse
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
+from _dataset_cli import add_dataset_flag, dataset_from_args  # noqa: E402
+
 from tinybert_xai import (  # noqa: E402
-    DATASET_TWEETEVAL_SENTIMENT,
     Config,
     configure_reproducibility,
     evaluate_saved_teacher,
@@ -34,9 +36,15 @@ from tinybert_xai import (  # noqa: E402
 )
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Evaluate the saved teacher on one dataset's test split.")
+    add_dataset_flag(parser)
+    return parser.parse_args()
+
+
 def main() -> None:
     cfg = Config()
-    spec = DATASET_TWEETEVAL_SENTIMENT
+    spec = dataset_from_args(parse_args())
 
     configure_reproducibility(cfg.seed)
     device = resolve_device(cfg)
