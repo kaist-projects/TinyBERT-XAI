@@ -1,0 +1,172 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "student-kd_hidden_attn-anli-2026-05-30T07:26:23Z",
+    "stage": "student",
+    "condition": "kd_hidden_attn"
+  },
+  "dataset": {
+    "name": "facebook/anli",
+    "config": null,
+    "num_labels": 3,
+    "label_names": [
+      "entailment",
+      "neutral",
+      "contradiction"
+    ],
+    "input_type": "sentence_pair",
+    "split_scheme": "official",
+    "source_fingerprint": null,
+    "splits": {
+      "train": 162865,
+      "validation": 3200,
+      "test": 3200
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "student_checkpoint": "huawei-noah/TinyBERT_General_4L_312D",
+    "tokenizer": "bert-base-uncased",
+    "teacher_checkpoint": "bert-base-uncased",
+    "parameter_count": 15312723,
+    "projection_parameter_count": 961536
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 2,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/students/anli/kd_hidden_attn/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24118.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 3461.0551,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 10180,
+        "epoch_time_seconds": 1255.25661,
+        "loss_total": 0.99619,
+        "losses": {
+          "ce": 0.69583,
+          "hidden": 0.29916,
+          "attention": 0.00121
+        },
+        "grad_norm_mean": 12.30479,
+        "dev": {
+          "macro_f1": 0.40894,
+          "micro_f1": 0.42031,
+          "accuracy": 0.42031,
+          "ECE": 0.2694,
+          "NLL": 1.27698,
+          "Brier": 0.76451
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 20360,
+        "epoch_time_seconds": 1131.44736,
+        "loss_total": 0.79372,
+        "losses": {
+          "ce": 0.56442,
+          "hidden": 0.22816,
+          "attention": 0.00114
+        },
+        "grad_norm_mean": 14.316,
+        "dev": {
+          "macro_f1": 0.42314,
+          "micro_f1": 0.42781,
+          "accuracy": 0.42781,
+          "ECE": 0.27701,
+          "NLL": 1.3173,
+          "Brier": 0.77362
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 30540,
+        "epoch_time_seconds": 1065.71423,
+        "loss_total": 0.70595,
+        "losses": {
+          "ce": 0.48077,
+          "hidden": 0.22404,
+          "attention": 0.00114
+        },
+        "grad_norm_mean": 16.29741,
+        "dev": {
+          "macro_f1": 0.42601,
+          "micro_f1": 0.43562,
+          "accuracy": 0.43562,
+          "ECE": 0.32666,
+          "NLL": 1.5208,
+          "Brier": 0.83002
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.42601,
+      "micro_f1": 0.43562,
+      "accuracy": 0.43562,
+      "per_class_f1": [0.50277, 0.42152, 0.35374],
+      "confusion_matrix": [
+        [680, 184, 206],
+        [387, 376, 305],
+        [568, 156, 338]
+      ],
+      "ECE": 0.32666,
+      "NLL": 1.5208,
+      "Brier": 0.83002
+    },
+    "test": {
+      "macro_f1": 0.41952,
+      "micro_f1": 0.43156,
+      "accuracy": 0.43156,
+      "per_class_f1": [0.50581, 0.39657, 0.35616],
+      "confusion_matrix": [
+        [696, 169, 205],
+        [428, 347, 293],
+        [558, 166, 338]
+      ],
+      "ECE": 0.32478,
+      "NLL": 1.48446,
+      "Brier": 0.81899,
+      "teacher_student_analysis": {
+        "top1_agreement": 0.64844,
+        "teacher_student_kl": 0.51633,
+        "teacher_correct_student_wrong": 587,
+        "teacher_wrong_student_correct": 317,
+        "error_copying": 0.82062
+      }
+    }
+  }
+}
