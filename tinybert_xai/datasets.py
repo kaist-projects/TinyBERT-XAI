@@ -36,6 +36,7 @@ class DatasetSpec:
     )
     dev_split: float | None = None
     test_split: float | None = None
+    train_subsample: int | None = None
     local_csv: LocalCsvSource | None = None
 
     @property
@@ -51,6 +52,8 @@ class DatasetSpec:
             tags.append(f"dev_{self.dev_split}")
         if self.test_split is not None:
             tags.append(f"test_{self.test_split}")
+        if self.train_subsample is not None:
+            tags.append(f"sub{self.train_subsample}")
         if not tags:
             return "official"
         return "stratified_" + "_".join(tags) + f"_seed{_DEV_SPLIT_SEED}"
@@ -135,13 +138,60 @@ DATASET_DYNAHATE = DatasetSpec(
 )
 
 
+DATASET_FEVER = DatasetSpec(
+    name="fever",
+    family="nli",
+    hf_path="pietrolesci/nli_fever",
+    hf_config=None,
+    num_labels=3,
+    label_names=["entailment", "neutral", "contradiction"],
+    text_keys=("premise", "hypothesis"),
+    label_key="label",
+    # Official test split ships unlabeled, so use dev for validation and carve a
+    # seed-42 stratified test out of train. Train is large (~208K); cap it to 50K
+    # to keep the 3-epoch budget comparable to the other datasets.
+    split_sources={"train": "train", "validation": "dev"},
+    test_split=0.1,
+    train_subsample=50_000,
+)
+
+
+DATASET_HATEVAL = DatasetSpec(
+    name="hateval",
+    family="hate",
+    hf_path="valeriobasile/HatEval",
+    # NOTE: HatEval is HF-gated; hf_config, text_keys, and the split names below
+    # are best-effort assumptions that could not be verified (datasets-server
+    # returns 401 without access). Confirm them on the first authenticated load
+    # after accepting the dataset terms + `huggingface-cli login`.
+    hf_config="english",
+    num_labels=2,
+    label_names=["not_hate", "hate"],
+    text_keys=("text",),
+    label_key="HS",
+    split_sources={"train": "train", "validation": "validation", "test": "test"},
+)
+
+
 ALL_DATASETS = (
     DATASET_TWEETEVAL_SENTIMENT,
     DATASET_IMDB,
     DATASET_ANLI,
     DATASET_DAVIDSON,
     DATASET_DYNAHATE,
+    DATASET_FEVER,
+    DATASET_HATEVAL,
 )
+
+# Deferred datasets (design-doc §11 open questions) — not yet registered because
+# neither has a drop-in HF classification source and both carry unresolved
+# decisions. Documented here so the candidate sources are not lost:
+#   - `vardial`  (Aepli/VarDial 2023, dialects): SID4LR intent data lives on
+#     bitbucket.org/robvanderg/sid4lr (no HF port); `statworx/swiss-dialects` is a
+#     cleaner HF dialect-ID alternative. Label scheme/source TBD.
+#   - `multivalue` (Multi-VALUE, dialects): rule-based dialect-transformation
+#     toolkit at github.com/SALT-NLP/multi-value; needs generated data and a
+#     binary-vs-50-class label decision before it can be a real DatasetSpec.
 DATASETS_BY_NAME = {spec.name: spec for spec in ALL_DATASETS}
 
 
@@ -164,7 +214,8 @@ def load_split(spec: DatasetSpec, split: str) -> Dataset:
         return _load_local_csv_split(spec, split)
     if _is_synthesized(spec, split):
         return _synthesized_split(spec, split)
-    return _load_sources(spec, spec.split_sources[split])
+    ds = _load_sources(spec, spec.split_sources[split])
+    return _maybe_subsample_train(ds, spec) if split == "train" else ds
 
 
 def source_fingerprint(spec: DatasetSpec) -> dict | None:
@@ -258,6 +309,7 @@ def _is_synthesized(spec: DatasetSpec, split: str) -> bool:
 
 def _synthesized_split(spec: DatasetSpec, split: str) -> Dataset:
     pool = _ensure_classlabel(_load_sources(spec, spec.split_sources["train"]), spec)
+    pool = _maybe_subsample_train(pool, spec)
     parts = stratified_split_partition(
         pool, dev_split=spec.dev_split, test_split=spec.test_split, label_key=spec.label_key
     )
@@ -291,6 +343,21 @@ def stratified_split_partition(
         parts["validation"], remaining = carved["test"], carved["train"]
     parts["train"] = remaining
     return parts
+
+
+def _maybe_subsample_train(ds: Dataset, spec: DatasetSpec) -> Dataset:
+    """Cap an oversized train pool to ``spec.train_subsample`` via a seed-42 stratified draw.
+
+    No-op when the cap is unset or the pool already fits, so the train/test partition
+    carved afterwards is deterministic and class-balanced. Used to keep very large
+    datasets (e.g. FEVER) within the 3-epoch wall-clock budget.
+    """
+    cap = spec.train_subsample
+    if cap is None or len(ds) <= cap:
+        return ds
+    ds = _ensure_classlabel(ds, spec)
+    carved = ds.train_test_split(train_size=cap, seed=_DEV_SPLIT_SEED, stratify_by_column=spec.label_key)
+    return carved["train"]
 
 
 def _load_local_csv_split(spec: DatasetSpec, split: str) -> Dataset:

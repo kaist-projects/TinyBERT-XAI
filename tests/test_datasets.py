@@ -5,13 +5,20 @@ from tinybert_xai import (
     DATASET_ANLI,
     DATASET_DAVIDSON,
     DATASET_DYNAHATE,
+    DATASET_FEVER,
+    DATASET_HATEVAL,
     DATASET_IMDB,
     DATASET_TWEETEVAL_SENTIMENT,
     LocalCsvSource,
     dataset_by_name,
     load_split,
 )
-from tinybert_xai.datasets import DatasetSpec, _tokenize_split, stratified_split_partition
+from tinybert_xai.datasets import (
+    DatasetSpec,
+    _maybe_subsample_train,
+    _tokenize_split,
+    stratified_split_partition,
+)
 
 MAX_LEN = 8
 
@@ -90,6 +97,30 @@ def test_three_way_partition_sizes_disjoint_and_stratified():
     assert set(again["test"]["idx"]) == test_idx  # reproducible
 
 
+def test_subsample_caps_train_pool_stratified_and_deterministic():
+    ds = _labelled_dataset(200)
+    spec = DatasetSpec("t", "f", "p", None, 2, ["a", "b"], text_keys=("text",), train_subsample=50)
+
+    out = _maybe_subsample_train(ds, spec)
+    assert len(out) == 50
+    assert sum(out["label"]) == 25  # 50/50 classes preserved
+
+    again = _maybe_subsample_train(ds, spec)
+    assert set(again["idx"]) == set(out["idx"])  # reproducible
+
+
+def test_subsample_is_noop_when_pool_within_cap():
+    ds = _labelled_dataset(30)
+    spec = DatasetSpec("t", "f", "p", None, 2, ["a", "b"], text_keys=("text",), train_subsample=50)
+    assert _maybe_subsample_train(ds, spec) is ds
+
+
+def test_subsample_is_noop_when_unset():
+    ds = _labelled_dataset(30)
+    spec = DatasetSpec("t", "f", "p", None, 2, ["a", "b"], text_keys=("text",))
+    assert _maybe_subsample_train(ds, spec) is ds
+
+
 def test_local_csv_split_filters_by_split_column_and_maps_labels(tmp_path):
     csv = tmp_path / "d.csv"
     csv.write_text("text,label,split\na,hate,train\nb,nothate,train\nc,hate,dev\nd,nothate,test\n")
@@ -128,6 +159,8 @@ def test_registry_round_trips_known_datasets():
     assert dataset_by_name("davidson") is DATASET_DAVIDSON
     assert dataset_by_name("dynahate") is DATASET_DYNAHATE
     assert dataset_by_name("tweet_eval-sentiment") is DATASET_TWEETEVAL_SENTIMENT
+    assert dataset_by_name("fever") is DATASET_FEVER
+    assert dataset_by_name("hateval") is DATASET_HATEVAL
     with pytest.raises(KeyError):
         dataset_by_name("does-not-exist")
 
@@ -140,3 +173,7 @@ def test_spec_input_type_and_split_scheme():
     assert DATASET_DAVIDSON.split_scheme == "stratified_dev_0.1_test_0.1_seed42"
     assert DATASET_DYNAHATE.input_type == "single_text"
     assert DATASET_DYNAHATE.split_scheme == "official_csv"
+    assert DATASET_FEVER.input_type == "sentence_pair"
+    assert DATASET_FEVER.split_scheme == "stratified_test_0.1_sub50000_seed42"
+    assert DATASET_HATEVAL.input_type == "single_text"
+    assert DATASET_HATEVAL.split_scheme == "official"

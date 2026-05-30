@@ -41,16 +41,21 @@ registered), and 🔒 needs gated access.
 | ANLI (NLI) | `anli` | [facebook/anli](https://huggingface.co/datasets/facebook/anli) | pair | ✅ |
 | Davidson (hate speech) | `davidson` | [tdavidson/hate_speech_offensive](https://huggingface.co/datasets/tdavidson/hate_speech_offensive) | single | ✅ |
 | DynaHate (hate speech) | `dynahate` | [bvidgen/Dynamically-Generated-Hate-Speech-Dataset](https://github.com/bvidgen/Dynamically-Generated-Hate-Speech-Dataset) | single | ✅ (manual CSV) |
-| HatEval (hate speech) | `hateval` | [SemEval-2019 Task 5](http://hatespeech.di.unito.it/hateval.html) | single | 🔒 planned (gated) |
-| FEVER (NLI) | `fever` | [fever.ai](https://fever.ai/) | pair | ⬜ planned |
+| HatEval (hate speech) | `hateval` | [valeriobasile/HatEval](https://huggingface.co/datasets/valeriobasile/HatEval) | single | ✅ 🔒 (gated) |
+| FEVER (NLI) | `fever` | [pietrolesci/nli_fever](https://huggingface.co/datasets/pietrolesci/nli_fever) | pair | ✅ |
 | Aepli/VarDial-2023 (dialects) | `vardial` | [VarDial 2023](https://sites.google.com/view/vardial-2023) | single | ⬜ planned |
 | Multi-VALUE (dialects) | `multivalue` | [SALT-NLP/multi-value](https://github.com/SALT-NLP/multi-value) | single | ⬜ planned |
 
 Datasets with no official validation/test split are partitioned with a seed-42
-stratified split (IMDB: dev only; Davidson: 80/10/10). DynaHate is distributed
-as a GitHub CSV rather than on the Hub — download v0.2.3 and save it as
-`data/dynahate/dynahate_v0.2.3.csv` (gitignored) before running it; its official
-`split` column is used as-is.
+stratified split (IMDB: dev only; Davidson: 80/10/10). FEVER's official test split
+ships unlabeled, so its `dev` split is used for validation and a seed-42 stratified
+test set is carved from train; train is also subsampled to 50K (seed-42, stratified)
+to keep the 3-epoch budget comparable across datasets. HatEval is HF-gated — accept
+the dataset terms and `huggingface-cli login` before running it; its config slug,
+text column, and split names are best-effort assumptions to confirm on first load.
+DynaHate is distributed as a GitHub CSV rather than on the Hub — download v0.2.3 and
+save it as `data/dynahate/dynahate_v0.2.3.csv` (gitignored) before running it; its
+official `split` column is used as-is.
 
 ## Features
 
