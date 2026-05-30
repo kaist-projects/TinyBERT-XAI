@@ -383,6 +383,29 @@ def save_student_evaluation_result(result: StudentEvaluationResult) -> None:
     patch_metadata_file(result.metadata_path, mutate)
 
 
+def format_student_eval_summary(result: StudentEvaluationResult) -> str:
+    """Render the dev/test evaluation summary as a printable multi-line string."""
+    dev, test = result.dev_result, result.test_result
+    lines = [
+        f"  dev={result.dev_size}  test={result.test_size}",
+        f"  dev macro-F1  : {dev.macro_f1:.4f}",
+        f"  dev accuracy  : {dev.accuracy:.4f}",
+        f"  dev ECE       : {dev.ECE:.4f}",
+        f"  test macro-F1 : {test.macro_f1:.4f}",
+        f"  test accuracy : {test.accuracy:.4f}",
+        f"  test ECE      : {test.ECE:.4f}",
+        f"  per-class F1  : {[f'{v:.3f}' for v in test.per_class_f1]}",
+    ]
+    if result.teacher_student_analysis is not None:
+        analysis = result.teacher_student_analysis
+        lines.append(f"  top1 agreement: {analysis.top1_agreement:.4f}")
+        lines.append(f"  teacher->student KL: {analysis.teacher_student_kl:.4f}")
+
+    pass_fail = "PASS" if test.macro_f1 >= 0.33 else "FAIL"
+    lines.append(f"  DoD check (test macro-F1 >= 0.33): {pass_fail}")
+    return "\n".join(lines)
+
+
 def _student_batch_losses(
     model: "PreTrainedModel",
     batch: dict[str, torch.Tensor],

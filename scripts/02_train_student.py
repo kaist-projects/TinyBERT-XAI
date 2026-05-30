@@ -30,39 +30,30 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
+from _student_cli import add_signal_flags, condition_from_args  # noqa: E402
+
 from tinybert_xai import (  # noqa: E402
     DATASET_TWEETEVAL_SENTIMENT,
     Config,
-    condition_from_flags,
     configure_reproducibility,
     evaluate_saved_student,
     fine_tune_student,
-    load_classifier,
-    load_state_dict,
+    format_student_eval_summary,
     load_student_data,
+    load_trained_teacher,
     prepare_student_model,
     resolve_device,
     save_student_evaluation_result,
     save_student_training_result,
     start_student_metadata,
-    teacher_dir,
 )
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train a TinyBERT student for one distillation condition.")
-    parser.add_argument("--logit", action="store_true", help="enable logit distillation")
-    parser.add_argument("--hidden", action="store_true", help="enable hidden-state distillation")
-    parser.add_argument("--attention", action="store_true", help="enable attention distillation")
+    add_signal_flags(parser)
     parser.add_argument("--eval", action="store_true", help="evaluate on dev/test after training completes")
     return parser.parse_args()
-
-
-def load_teacher(cfg, spec, device):
-    teacher_model = load_classifier(cfg.teacher_checkpoint, spec.num_labels, device)
-    load_state_dict(teacher_model, teacher_dir(spec.name) / "best.pt", device)
-    teacher_model.eval()
-    return teacher_model
 
 
 def train_student(cfg, spec, cond, device, teacher_model):
@@ -92,12 +83,7 @@ def evaluate_student(cfg, spec, cond, device, teacher_model):
     result = evaluate_saved_student(cfg, spec, cond, device=device, teacher_model=teacher_model)
     save_student_evaluation_result(result)
 
-    print(f"  dev macro-F1  : {result.dev_result.macro_f1:.4f}")
-    print(f"  test macro-F1 : {result.test_result.macro_f1:.4f}")
-    print(f"  test accuracy : {result.test_result.accuracy:.4f}")
-    print(f"  test ECE      : {result.test_result.ECE:.4f}")
-    pass_fail = "PASS" if result.test_result.macro_f1 >= 0.33 else "FAIL"
-    print(f"  DoD check (test macro-F1 >= 0.33): {pass_fail}")
+    print(format_student_eval_summary(result))
     print(f"\nrun_metadata.json updated: {result.metadata_path}")
     print("[OK] Student evaluation complete.")
 
@@ -106,7 +92,7 @@ def main() -> None:
     cfg = Config()
     spec = DATASET_TWEETEVAL_SENTIMENT
     args = parse_args()
-    cond = condition_from_flags(args.logit, args.hidden, args.attention)
+    cond = condition_from_args(args)
 
     configure_reproducibility(cfg.seed)
     device = resolve_device(cfg)
@@ -118,7 +104,7 @@ def main() -> None:
     teacher_model = None
     if cond.uses_teacher or args.eval:
         print("Loading teacher checkpoint ...")
-        teacher_model = load_teacher(cfg, spec, device)
+        teacher_model = load_trained_teacher(cfg, spec, device)
 
     train_student(cfg, spec, cond, device, teacher_model if cond.uses_teacher else None)
 

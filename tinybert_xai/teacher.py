@@ -169,6 +169,14 @@ def prepare_teacher_model(cfg: "Config", spec: "DatasetSpec", device: str) -> Te
     return TeacherModel(model=model, optimizer=optimizer, parameter_count=count_params(model))
 
 
+def load_trained_teacher(cfg: "Config", spec: "DatasetSpec", device: str) -> "PreTrainedModel":
+    """Load the fine-tuned teacher checkpoint for a dataset, ready for inference."""
+    model = load_classifier(cfg.teacher_checkpoint, spec.num_labels, device)
+    load_state_dict(model, teacher_dir(spec.name) / "best.pt", device)
+    model.eval()
+    return model
+
+
 def fine_tune_teacher(
     cfg: "Config",
     spec: "DatasetSpec",
