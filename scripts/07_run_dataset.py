@@ -28,6 +28,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from _dataset_cli import add_dataset_flag, dataset_from_args  # noqa: E402
+from _student_cli import condition_to_flags  # noqa: E402
 
 from tinybert_xai import ConditionSpec, all_conditions  # noqa: E402
 from tinybert_xai.checkpoints import results_dir, student_dir, teacher_dir  # noqa: E402
@@ -79,7 +80,7 @@ def run_all_conditions(dataset_name: str, *, force: bool) -> list[str]:
             continue
         print(f"[{cond.name}] training + evaluating ...")
         try:
-            run_script("02_train_student.py", ["--dataset", dataset_name, *signal_flags(cond), "--eval"])
+            run_script("02_train_student.py", ["--dataset", dataset_name, *condition_to_flags(cond), "--eval"])
         except subprocess.CalledProcessError:
             print(f"[{cond.name}] FAILED")
             failures.append(cond.name)
@@ -94,17 +95,6 @@ def condition_done(dataset_name: str, cond: ConditionSpec) -> bool:
     best_ckpt = REPO_ROOT / student_dir(dataset_name, cond.name) / "best.pt"
     metadata = REPO_ROOT / results_dir("student", dataset_name, cond.name) / "run_metadata.json"
     return best_ckpt.exists() and _has_test_metrics(metadata)
-
-
-def signal_flags(cond: ConditionSpec) -> list[str]:
-    flags = []
-    if cond.logit:
-        flags.append("--logit")
-    if cond.hidden:
-        flags.append("--hidden")
-    if cond.attention:
-        flags.append("--attention")
-    return flags
 
 
 def run_script(script_name: str, script_args: list[str]) -> None:
