@@ -142,11 +142,54 @@ the analysis for another dataset never overwrites an existing report:
 The script also prints a pipeline-validity checklist and a GO/NO-GO verdict for
 scaling beyond the pilot dataset.
 
+### Cross-Dataset Analysis
+
+Once several datasets have completed sweeps, roll them up into the cross-task
+presentation assets. This runs in two stages, written under
+`results/analysis/cross_dataset/`.
+
+**Stage 1 — metadata only (no GPU).** Reads every
+`results/students/<dataset>/<condition>/run_metadata.json` that is present:
+
+```bash
+python scripts/08_cross_dataset_analysis.py
+```
+
+- `figures/cross_task_macro_f1.png`, `figures/cross_task_delta.png` — the headline
+  dataset × condition heatmaps (absolute macro-F1 and Δ from `ce_only`).
+- `figures/confusion/<dataset>__<condition>.png` — per-condition confusion matrices.
+- `tables/*.csv` — cross-task matrices plus tidy calibration, teacher-student, and
+  per-dataset factorial-effect tables.
+- `TABLES.md` — a quick-read index of the matrices.
+
+**Stage 2 — representation + XAI artifacts (GPU, reloads checkpoints).** Runs
+forward passes on a fixed test sample for every dataset that has both a teacher
+and student checkpoint:
+
+```bash
+python scripts/08b_representation_analysis.py                 # N=256 test sample
+python scripts/08b_representation_analysis.py --sample-size 128
+```
+
+- `representation/layer_cka.csv` — linear CKA per mapped pair. The trained hidden
+  projections were never checkpointed, so CKA (dimension-agnostic, no projection)
+  replaces the design doc's projected cosine.
+- `representation/attention_kl.csv` — head-averaged KL(teacher ‖ student) of
+  attention maps per mapped pair.
+- `representation/attention/*.png` — teacher-vs-student attention heatmaps for
+  representative examples (`ce_only` and `kd_full`, by correctness category).
+- `figures/cka_mean.png`, `figures/efficiency.png`, `representation/efficiency.json`
+  — mean-CKA heatmap and the one teacher-vs-student size/latency comparison.
+
+The written interpretation (RQ1/RQ2 answers) lives in
+`results/analysis/cross_dataset/CROSS_DATASET.md`.
+
 ## Project Structure
 
 ```text
 tinybert_xai/
-  analysis/       Factorial loaders, effect math, tables, and plots
+  analysis/       Factorial loaders, effect math, tables, plots,
+                  cross-dataset roll-ups, and representation (CKA/attention) analysis
   eval/           Metrics and teacher-student analysis
   conditions.py   The 8 student ablation conditions
   datasets.py     Dataset registry + adapters (tweet_eval, imdb, anli)
@@ -162,8 +205,10 @@ scripts/
   01b_eval_teacher.py
   02_train_student.py
   02b_eval_student.py
-  06_analyze_factorial.py
-  07_run_dataset.py     Teacher + all 8 conditions for one dataset
+  06_analyze_factorial.py        Per-dataset factorial report
+  07_run_dataset.py              Teacher + all 8 conditions for one dataset
+  08_cross_dataset_analysis.py   Cross-task heatmaps + tables (metadata only)
+  08b_representation_analysis.py CKA, attention KL/heatmaps, efficiency (GPU)
   _dataset_cli.py       Shared --dataset flag glue
   _student_cli.py       Shared signal-flag glue
 
