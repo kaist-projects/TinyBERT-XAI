@@ -149,11 +149,9 @@ presentation assets. This runs in two stages, written under
 python scripts/08_cross_dataset_analysis.py
 ```
 
-- `figures/cross_task_macro_f1.png`, `figures/cross_task_delta.png`: the headline
-  dataset × condition heatmaps (absolute macro-F1 and Δ from `ce_only`).
-- `figures/confusion/<dataset>__<condition>.png`: per-condition confusion matrices.
-- `tables/*.csv`: cross-task matrices + tidy calibration, teacher-student, and
-  per-dataset factorial-effect tables.
+- `figures/cross_task_macro_f1.png`, `figures/cross_task_delta.png`: condition heatmaps
+- `figures/confusion`: per-condition confusion matrices.
+- `tables/*.csv`: per-dataset factorial-effect tables.
 - `TABLES.md`: a quick-read index of the matrices.
 
 **Stage 2, representation + XAI artifacts (GPU, reloads checkpoints).** Runs
@@ -164,14 +162,9 @@ and student checkpoint:
 python scripts/08b_representation_analysis.py   # N=256 test sample
 ```
 
-- `representation/layer_cka.csv`: linear CKA per mapped pair. The trained hidden
-  projections were never checkpointed
-- `representation/attention_kl.csv`: head-averaged KL(teacher ‖ student) of
-  attention maps per mapped pair.
-- `representation/attention/*.png`: teacher-vs-student attention heatmaps for
-  representative examples (`ce_only` and `kd_full`, by correctness category).
-- `figures/cka_mean.png`, `figures/efficiency.png`, `representation/efficiency.json`:
-  mean-CKA heatmap and the one teacher-vs-student size/latency comparison.
+- `representation/layer_cka.csv`: linear CKA per mapped pair
+- `representation/attention_kl.csv`: KL(teacher ‖ student) of attention maps
+- `representation/attention/*.png`: teacher-vs-student attention heatmaps
 
 The written interpretation (RQ1/RQ2 answers) lives in
 `results/analysis/cross_dataset/CROSS_DATASET.md`.
