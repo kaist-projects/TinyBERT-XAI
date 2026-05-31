@@ -1,0 +1,8 @@
+{
+  "teacher_parameters": 109484547,
+  "student_parameters": 14351187,
+  "teacher_latency_ms": 49.07610349910101,
+  "student_latency_ms": 5.457579049107153,
+  "parameter_ratio": 7.628954106723019,
+  "speedup": 8.992284501518991
+}
