@@ -13,6 +13,13 @@ dynahate,logit x hidden,2-way,test_macro_f1,0.0014949999999999686,0.001494999999
 dynahate,logit x attention,2-way,test_macro_f1,0.00299499999999997,0.00299499999999997
 dynahate,hidden x attention,2-way,test_macro_f1,0.007235000000000075,0.007235000000000075
 dynahate,logit x hidden x attention,3-way,test_macro_f1,0.0014200000000000879,0.0014200000000000879
+hateval,logit,main,test_macro_f1,0.0020100000000000118,0.0020100000000000118
+hateval,hidden,main,test_macro_f1,-0.002919999999999978,0.002919999999999978
+hateval,attention,main,test_macro_f1,-0.003155000000000019,0.003155000000000019
+hateval,logit x hidden,2-way,test_macro_f1,0.01019500000000001,0.01019500000000001
+hateval,logit x attention,2-way,test_macro_f1,-0.007850000000000024,0.007850000000000024
+hateval,hidden x attention,2-way,test_macro_f1,0.0007099999999999884,0.0007099999999999884
+hateval,logit x hidden x attention,3-way,test_macro_f1,0.007925000000000071,0.007925000000000071
 anli,logit,main,test_macro_f1,0.008830000000000005,0.008830000000000005
 anli,hidden,main,test_macro_f1,-0.0031050000000000244,0.0031050000000000244
 anli,attention,main,test_macro_f1,-0.0009799999999999948,0.0009799999999999948
@@ -41,3 +48,10 @@ tweet_eval-sentiment,logit x hidden,2-way,test_macro_f1,0.0063949999999999285,0.
 tweet_eval-sentiment,logit x attention,2-way,test_macro_f1,-0.004689999999999972,0.004689999999999972
 tweet_eval-sentiment,hidden x attention,2-way,test_macro_f1,0.005390000000000061,0.005390000000000061
 tweet_eval-sentiment,logit x hidden x attention,3-way,test_macro_f1,0.00608000000000003,0.00608000000000003
+vardial,logit,main,test_macro_f1,0.07017500000000004,0.07017500000000004
+vardial,hidden,main,test_macro_f1,-0.09314499999999996,0.09314499999999996
+vardial,attention,main,test_macro_f1,-0.009389999999999996,0.009389999999999996
+vardial,logit x hidden,2-way,test_macro_f1,0.07483000000000001,0.07483000000000001
+vardial,logit x attention,2-way,test_macro_f1,0.0036450000000000093,0.0036450000000000093
+vardial,hidden x attention,2-way,test_macro_f1,-0.010815000000000019,0.010815000000000019
+vardial,logit x hidden x attention,3-way,test_macro_f1,-0.01861999999999997,0.01861999999999997

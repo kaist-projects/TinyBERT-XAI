@@ -15,6 +15,14 @@ dynahate,kd_logit_hidden,0.80971,1.0,0.14821,536,248
 dynahate,kd_logit_attn,0.84369,1.0,0.12579,390,254
 dynahate,kd_hidden_attn,0.79903,1.0,0.17763,534,294
 dynahate,kd_full,0.81602,1.0,0.14921,486,272
+hateval,ce_only,0.85864,1.0,0.14144,409,237
+hateval,kd_logit,0.88884,1.0,0.1123,315,193
+hateval,kd_hidden,0.84705,1.0,0.15363,443,256
+hateval,kd_attn,0.87987,1.0,0.12437,328,221
+hateval,kd_logit_hidden,0.86586,1.0,0.13421,377,236
+hateval,kd_logit_attn,0.88468,1.0,0.11845,361,166
+hateval,kd_hidden_attn,0.84923,1.0,0.15203,442,247
+hateval,kd_full,0.87024,1.0,0.13148,371,222
 anli,ce_only,0.65344,0.83063,0.50821,585,315
 anli,kd_logit,0.66406,0.83104,0.48906,554,312
 anli,kd_hidden,0.65188,0.82778,0.50885,584,318
@@ -47,3 +55,11 @@ tweet_eval-sentiment,kd_logit_hidden,0.79046,0.8956,0.15993,1343,927
 tweet_eval-sentiment,kd_logit_attn,0.77735,0.88717,0.16865,1483,923
 tweet_eval-sentiment,kd_hidden_attn,0.77743,0.89648,0.17138,1467,970
 tweet_eval-sentiment,kd_full,0.79103,0.89476,0.15785,1321,941
+vardial,ce_only,0.63368,0.67778,0.48649,113,32
+vardial,kd_logit,0.60421,0.63333,0.48342,123,32
+vardial,kd_hidden,0.44211,0.52874,0.59548,189,35
+vardial,kd_attn,0.61053,0.63333,0.4901,120,32
+vardial,kd_logit_hidden,0.60632,0.64368,0.49741,121,35
+vardial,kd_logit_attn,0.63579,0.66667,0.45483,111,32
+vardial,kd_hidden_attn,0.45684,0.5618,0.58048,186,33
+vardial,kd_full,0.56842,0.5977,0.51552,135,35
