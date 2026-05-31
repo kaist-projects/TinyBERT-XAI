@@ -19,7 +19,8 @@
     "source_fingerprint": null,
     "splits": {
       "train": 45000,
-      "validation": 19998
+      "validation": 19998,
+      "test": 5000
     },
     "max_seq_length": 128,
     "truncation": true,
@@ -123,5 +124,34 @@
       }
     ]
   },
-  "metrics": {}
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.72121,
+      "micro_f1": 0.72447,
+      "accuracy": 0.72447,
+      "per_class_f1": [0.79846, 0.62953, 0.73565],
+      "confusion_matrix": [
+        [5610, 750, 306],
+        [1214, 3944, 1508],
+        [562, 1170, 4934]
+      ],
+      "ECE": 0.15767,
+      "NLL": 0.94845,
+      "Brier": 0.44091
+    },
+    "test": {
+      "macro_f1": 0.81023,
+      "micro_f1": 0.8674,
+      "accuracy": 0.8674,
+      "per_class_f1": [0.93389, 0.66063, 0.83616],
+      "confusion_matrix": [
+        [2790, 101, 75],
+        [156, 511, 188],
+        [63, 80, 1036]
+      ],
+      "ECE": 0.05335,
+      "NLL": 0.40613,
+      "Brier": 0.20737
+    }
+  }
 }
