@@ -1,6 +1,6 @@
 import json
 
-from tinybert_xai.runlog import RunMetadata, make_run_id, write_run_metadata
+from tinybert_xai.storage.runlog import RunMetadata, make_run_id, write_run_metadata
 
 
 def test_schema_v2_rounding_and_teacher_fields(tmp_path):

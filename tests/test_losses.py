@@ -5,8 +5,8 @@ import pytest
 import torch
 
 from tinybert_xai import condition_from_flags
-from tinybert_xai.losses import attention_kd_loss, compute_student_losses, hidden_kd_loss, logit_kd_loss
-from tinybert_xai.projections import HiddenProjection
+from tinybert_xai.distill.losses import attention_kd_loss, compute_student_losses, hidden_kd_loss, logit_kd_loss
+from tinybert_xai.modeling.projections import HiddenProjection
 
 
 def test_logit_kd_loss_identical_logits_is_zero():

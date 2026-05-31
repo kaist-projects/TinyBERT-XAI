@@ -4,9 +4,9 @@ import pytest
 import torch
 
 from tinybert_xai import condition_from_flags
-from tinybert_xai.student import train_student_epoch
-from tinybert_xai.teacher import train_teacher_epoch
-from tinybert_xai.training import TrainStats
+from tinybert_xai.pipeline.student import train_student_epoch
+from tinybert_xai.pipeline.teacher import train_teacher_epoch
+from tinybert_xai.pipeline.training import TrainStats
 
 
 class TinyLossModel(torch.nn.Module):

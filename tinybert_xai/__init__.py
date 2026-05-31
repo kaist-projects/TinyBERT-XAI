@@ -1,4 +1,4 @@
-from tinybert_xai.checkpoints import (
+from tinybert_xai.storage.checkpoints import (
     load_state_dict,
     results_dir,
     save_state_dict,
@@ -6,12 +6,12 @@ from tinybert_xai.checkpoints import (
     teacher_dir,
 )
 from tinybert_xai.config import Config
-from tinybert_xai.conditions import (
+from tinybert_xai.distill.conditions import (
     ConditionSpec,
     all_conditions,
     condition_from_flags,
 )
-from tinybert_xai.datasets import (
+from tinybert_xai.data.datasets import (
     ALL_DATASETS,
     DATASET_ANLI,
     DATASET_DAVIDSON,
@@ -31,7 +31,7 @@ from tinybert_xai.datasets import (
     load_split,
     source_fingerprint,
 )
-from tinybert_xai.earlystop import EarlyStopper
+from tinybert_xai.pipeline.earlystop import EarlyStopper
 from tinybert_xai.eval import (
     EvaluationResult,
     TeacherStudentAnalysis,
@@ -39,17 +39,17 @@ from tinybert_xai.eval import (
     compute_teacher_student_analysis,
     evaluate,
 )
-from tinybert_xai.losses import attention_kd_loss, compute_student_losses, hidden_kd_loss, logit_kd_loss
-from tinybert_xai.models import load_tokenizer, load_classifier
-from tinybert_xai.projections import HiddenProjection
-from tinybert_xai.runlog import (
+from tinybert_xai.distill.losses import attention_kd_loss, compute_student_losses, hidden_kd_loss, logit_kd_loss
+from tinybert_xai.modeling.models import load_tokenizer, load_classifier
+from tinybert_xai.modeling.projections import HiddenProjection
+from tinybert_xai.storage.runlog import (
     RunMetadata,
     TrainEpochEntry,
     collect_hardware,
     make_run_id,
     write_run_metadata,
 )
-from tinybert_xai.teacher import (
+from tinybert_xai.pipeline.teacher import (
     TeacherData,
     TeacherEvaluationResult,
     TeacherEpochStats,
@@ -68,7 +68,7 @@ from tinybert_xai.teacher import (
     start_teacher_metadata,
     train_teacher_epoch,
 )
-from tinybert_xai.student import (
+from tinybert_xai.pipeline.student import (
     StudentData,
     StudentEpochStats,
     StudentEvaluationResult,

@@ -12,7 +12,7 @@ from __future__ import annotations
 import pandas as pd
 
 from tinybert_xai.analysis.factorial import effects_table
-from tinybert_xai.conditions import all_conditions
+from tinybert_xai.distill.conditions import all_conditions
 
 #: Baseline condition that every ``delta`` is measured against.
 DELTA_BASELINE = "ce_only"

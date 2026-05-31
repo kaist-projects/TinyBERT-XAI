@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from tinybert_xai.conditions import ConditionSpec, all_conditions
+from tinybert_xai.distill.conditions import ConditionSpec, all_conditions
 
 RESULTS_ROOT = Path("results")
 METRIC_COLUMNS = (

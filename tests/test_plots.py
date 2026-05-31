@@ -1,6 +1,6 @@
 import pandas as pd
 
-from tinybert_xai.conditions import all_conditions
+from tinybert_xai.distill.conditions import all_conditions
 from tinybert_xai.analysis.plots import _metric_ylim, plot_condition_bars
 
 

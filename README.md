@@ -183,13 +183,13 @@ tinybert_xai/
   analysis/       Factorial loaders, effect math, tables, plots,
                   cross-dataset roll-ups, and representation (CKA/attention) analysis
   eval/           Metrics and teacher-student analysis
-  conditions.py   The 8 student ablation conditions
-  datasets.py     Dataset registry + adapters (tweet_eval, imdb, anli)
+  data/           Dataset registry + adapters (tweet_eval, imdb, anli)
+  modeling/       Model/tokenizer loading and the hidden-state projection module
+  distill/        The 8 ablation conditions and the KD losses (logit/hidden/attn)
+  pipeline/       Teacher + student training/evaluation pipelines, epoch loop, early stop
+  storage/        Checkpoint I/O and run-metadata logging
   config.py       Default experiment configuration
-  losses.py       CE, logit KD, hidden KD, and attention KD losses
-  projections.py  Hidden-state projection module
-  teacher.py      Teacher training/evaluation pipeline
-  student.py      Student training/evaluation pipeline
+  utils.py        Cross-cutting helpers (device, param counts, autocast)
 
 scripts/
   00_smoke_test.py

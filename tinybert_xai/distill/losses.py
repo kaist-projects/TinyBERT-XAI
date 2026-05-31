@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 import torch
 import torch.nn.functional as F
 
-from tinybert_xai.projections import TEACHER_HIDDEN_LAYERS, HiddenProjection
+from tinybert_xai.modeling.projections import TEACHER_HIDDEN_LAYERS, HiddenProjection
 
 if TYPE_CHECKING:
     from transformers.modeling_outputs import SequenceClassifierOutput
 
-    from tinybert_xai.conditions import ConditionSpec
+    from tinybert_xai.distill.conditions import ConditionSpec
 
 
 # Attention tuples have no embedding entry, unlike hidden-state tuples.

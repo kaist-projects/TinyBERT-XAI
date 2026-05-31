@@ -15,7 +15,7 @@ from tinybert_xai import (
     dataset_by_name,
     load_split,
 )
-from tinybert_xai.datasets import (
+from tinybert_xai.data.datasets import (
     DatasetSpec,
     _apply_label_map,
     _maybe_subsample_train,

@@ -19,7 +19,7 @@ from tinybert_xai.analysis.tables import (  # noqa: E402
     render_factorial_report,
 )
 from tinybert_xai import ALL_DATASETS  # noqa: E402
-from tinybert_xai.conditions import all_conditions  # noqa: E402
+from tinybert_xai.distill.conditions import all_conditions  # noqa: E402
 
 METRIC_COLUMNS = [
     "test_macro_f1",

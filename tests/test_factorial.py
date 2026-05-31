@@ -7,7 +7,7 @@ from tinybert_xai.analysis.factorial import (
     interaction_3way,
     main_effect,
 )
-from tinybert_xai.conditions import all_conditions
+from tinybert_xai.distill.conditions import all_conditions
 
 
 def _frame(values):

@@ -94,6 +94,9 @@ artifacts/
 # ─── ML: datasets & caches ─────────────────────────────────────────────────
 data/
 datasets/
+# but keep the source package dir of the same name (py sources only, not caches)
+!tinybert_xai/data/
+!tinybert_xai/data/*.py
 .cache/
 .huggingface/
 ~/.cache/huggingface/

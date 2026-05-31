@@ -47,7 +47,7 @@ from tinybert_xai import (  # noqa: E402
     load_tokenizer,
     resolve_device,
 )
-from tinybert_xai.analysis.cross_dataset import CONDITION_ORDER, _order_axes  # noqa: E402
+from tinybert_xai.analysis.cross_dataset import _order_axes  # noqa: E402
 from tinybert_xai.analysis.plots import (  # noqa: E402
     plot_attention_pair,
     plot_cross_task_heatmap,
@@ -63,8 +63,8 @@ from tinybert_xai.analysis.representations import (  # noqa: E402
     measure_efficiency,
     select_example_indices,
 )
-from tinybert_xai.checkpoints import load_state_dict, student_dir, teacher_dir  # noqa: E402
-from tinybert_xai.conditions import all_conditions  # noqa: E402
+from tinybert_xai.storage.checkpoints import load_state_dict, student_dir, teacher_dir  # noqa: E402
+from tinybert_xai.distill.conditions import all_conditions  # noqa: E402
 
 ANALYSIS_ROOT = pathlib.Path("results") / "analysis" / "cross_dataset"
 RESULTS_ROOT = pathlib.Path("results")

@@ -3,7 +3,7 @@ from pathlib import Path
 
 from tinybert_xai import format_student_eval_summary
 from tinybert_xai.eval import EvaluationResult, TeacherStudentAnalysis
-from tinybert_xai.student import StudentEvaluationResult
+from tinybert_xai.pipeline.student import StudentEvaluationResult
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from _student_cli import add_signal_flags, condition_from_args  # noqa: E402

@@ -5,7 +5,7 @@ from tinybert_xai.analysis.cross_dataset import (
     cross_task_matrix,
     delta_matrix,
 )
-from tinybert_xai.conditions import all_conditions
+from tinybert_xai.distill.conditions import all_conditions
 
 
 def _runs(datasets, base_by_dataset):
