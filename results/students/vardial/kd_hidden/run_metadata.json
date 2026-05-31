@@ -1,0 +1,172 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "student-kd_hidden-vardial-2026-05-31T17:29:05Z",
+    "stage": "student",
+    "condition": "kd_hidden"
+  },
+  "dataset": {
+    "name": "statworx/swiss-dialects",
+    "config": null,
+    "num_labels": 4,
+    "label_names": [
+      "BE",
+      "BS",
+      "LU",
+      "ZH"
+    ],
+    "input_type": "single_text",
+    "split_scheme": "stratified_dev_0.1_test_0.1_seed42",
+    "source_fingerprint": null,
+    "splits": {
+      "train": 3793,
+      "validation": 475,
+      "test": 475
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "student_checkpoint": "huawei-noah/TinyBERT_General_4L_312D",
+    "tokenizer": "bert-base-uncased",
+    "teacher_checkpoint": "bert-base-uncased",
+    "parameter_count": 15313036,
+    "projection_parameter_count": 961536
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 2,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/students/vardial/kd_hidden/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24118.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 51.32343,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 238,
+        "epoch_time_seconds": 13.37156,
+        "loss_total": 1.90479,
+        "losses": {
+          "ce": 1.38616,
+          "hidden": 0.51863
+        },
+        "grad_norm_mean": 0.58876,
+        "dev": {
+          "macro_f1": 0.12873,
+          "micro_f1": 0.26526,
+          "accuracy": 0.26526,
+          "ECE": 0.00464,
+          "NLL": 1.38405,
+          "Brier": 0.74888
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 476,
+        "epoch_time_seconds": 18.20254,
+        "loss_total": 1.80336,
+        "losses": {
+          "ce": 1.3396,
+          "hidden": 0.46376
+        },
+        "grad_norm_mean": 3.20172,
+        "dev": {
+          "macro_f1": 0.33548,
+          "micro_f1": 0.42947,
+          "accuracy": 0.42947,
+          "ECE": 0.04898,
+          "NLL": 1.19641,
+          "Brier": 0.66184
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 714,
+        "epoch_time_seconds": 18.75115,
+        "loss_total": 1.57742,
+        "losses": {
+          "ce": 1.13399,
+          "hidden": 0.44343
+        },
+        "grad_norm_mean": 8.80994,
+        "dev": {
+          "macro_f1": 0.40473,
+          "micro_f1": 0.44421,
+          "accuracy": 0.44421,
+          "ECE": 0.0283,
+          "NLL": 1.08593,
+          "Brier": 0.62132
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.40473,
+      "micro_f1": 0.44421,
+      "accuracy": 0.44421,
+      "per_class_f1": [0.57241, 0.21858, 0.25556, 0.57239],
+      "confusion_matrix": [
+        [83, 14, 17, 5],
+        [11, 20, 15, 74],
+        [70, 10, 23, 15],
+        [7, 19, 7, 85]
+      ],
+      "ECE": 0.0283,
+      "NLL": 1.08593,
+      "Brier": 0.62132
+    },
+    "test": {
+      "macro_f1": 0.39444,
+      "micro_f1": 0.41895,
+      "accuracy": 0.41895,
+      "per_class_f1": [0.52349, 0.33846, 0.1875, 0.5283],
+      "confusion_matrix": [
+        [78, 13, 24, 4],
+        [13, 33, 14, 60],
+        [77, 10, 18, 13],
+        [11, 19, 18, 70]
+      ],
+      "ECE": 0.04965,
+      "NLL": 1.13502,
+      "Brier": 0.63966,
+      "teacher_student_analysis": {
+        "top1_agreement": 0.44211,
+        "teacher_student_kl": 0.59548,
+        "teacher_correct_student_wrong": 189,
+        "teacher_wrong_student_correct": 35,
+        "error_copying": 0.52874
+      }
+    }
+  }
+}

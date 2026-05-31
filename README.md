@@ -134,13 +134,7 @@ Artifacts are written per dataset under `results/analysis/<dataset>/`, so runnin
 the analysis for another dataset never overwrites an existing report:
 
 - `results/analysis/<dataset>/REPORT.md`
-- `results/analysis/<dataset>/figures/condition_bars.png`
-- `results/analysis/<dataset>/figures/main_effects.png`
-- `results/analysis/<dataset>/figures/loss_magnitudes.png`
-- `results/analysis/<dataset>/figures/calibration.png`
-
-The script also prints a pipeline-validity checklist and a GO/NO-GO verdict for
-scaling beyond the pilot dataset.
+- `results/analysis/<dataset>/figures`
 
 ### Cross-Dataset Analysis
 
@@ -158,7 +152,7 @@ python scripts/08_cross_dataset_analysis.py
 - `figures/cross_task_macro_f1.png`, `figures/cross_task_delta.png`: the headline
   dataset × condition heatmaps (absolute macro-F1 and Δ from `ce_only`).
 - `figures/confusion/<dataset>__<condition>.png`: per-condition confusion matrices.
-- `tables/*.csv`: cross-task matrices plus tidy calibration, teacher-student, and
+- `tables/*.csv`: cross-task matrices + tidy calibration, teacher-student, and
   per-dataset factorial-effect tables.
 - `TABLES.md`: a quick-read index of the matrices.
 
@@ -167,13 +161,11 @@ forward passes on a fixed test sample for every dataset that has both a teacher
 and student checkpoint:
 
 ```bash
-python scripts/08b_representation_analysis.py                 # N=256 test sample
-python scripts/08b_representation_analysis.py --sample-size 128
+python scripts/08b_representation_analysis.py   # N=256 test sample
 ```
 
 - `representation/layer_cka.csv`: linear CKA per mapped pair. The trained hidden
-  projections were never checkpointed, so CKA (dimension-agnostic, no projection)
-  replaces the design doc's projected cosine.
+  projections were never checkpointed
 - `representation/attention_kl.csv`: head-averaged KL(teacher ‖ student) of
   attention maps per mapped pair.
 - `representation/attention/*.png`: teacher-vs-student attention heatmaps for
