@@ -137,6 +137,122 @@ def plot_calibration(df: pd.DataFrame, out_dir: Path, dataset: str) -> list[Path
     return _save(fig, out_dir / "calibration")
 
 
+def plot_cross_task_heatmap(
+    matrix: pd.DataFrame,
+    out_dir: Path,
+    stem: str,
+    title: str,
+    *,
+    fmt: str = ".3f",
+    center: float | None = None,
+    cmap: str = "viridis",
+) -> list[Path]:
+    """Render a datasets x conditions matrix as an annotated heatmap."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    height = max(3.0, 0.6 * len(matrix.index) + 1.5)
+    width = max(8.0, 0.9 * len(matrix.columns) + 2.0)
+    fig, ax = plt.subplots(figsize=(width, height))
+    sns.heatmap(
+        matrix,
+        annot=True,
+        fmt=fmt,
+        cmap=cmap,
+        center=center,
+        linewidths=0.5,
+        linecolor="white",
+        cbar_kws={"shrink": 0.8},
+        ax=ax,
+    )
+    ax.set_title(title)
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+    ax.tick_params(axis="x", rotation=35)
+    ax.tick_params(axis="y", rotation=0)
+    fig.tight_layout()
+    return _save(fig, out_dir / stem)
+
+
+def plot_confusion_matrix(
+    matrix: list[list[int]],
+    out_dir: Path,
+    stem: str,
+    title: str,
+    *,
+    labels: list[str] | None = None,
+) -> list[Path]:
+    """Render one confusion matrix (rows=true, cols=predicted) as a heatmap."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    frame = pd.DataFrame(matrix)
+    if labels is not None and len(labels) == frame.shape[0]:
+        frame.index = labels
+        frame.columns = labels
+    size = max(3.5, 0.7 * frame.shape[0] + 2.0)
+    fig, ax = plt.subplots(figsize=(size, size))
+    sns.heatmap(frame, annot=True, fmt="d", cmap="Blues", cbar=False, square=True, ax=ax)
+    ax.set_title(title)
+    ax.set_xlabel("Predicted")
+    ax.set_ylabel("True")
+    fig.tight_layout()
+    return _save(fig, out_dir / stem)
+
+
+def plot_attention_pair(
+    teacher_map,
+    student_map,
+    tokens: list[str],
+    out_dir: Path,
+    stem: str,
+    title: str,
+) -> list[Path]:
+    """Render teacher vs student head-averaged attention side by side."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    size = max(5.0, 0.32 * len(tokens) + 2.0)
+    fig, axes = plt.subplots(1, 2, figsize=(2 * size, size))
+    for ax, attn, name in zip(axes, [teacher_map, student_map], ["teacher (L12)", "student (L4)"]):
+        sns.heatmap(
+            attn,
+            cmap="magma",
+            square=True,
+            cbar_kws={"shrink": 0.7},
+            xticklabels=tokens,
+            yticklabels=tokens,
+            ax=ax,
+        )
+        ax.set_title(name)
+        ax.tick_params(axis="x", rotation=90, labelsize=6)
+        ax.tick_params(axis="y", rotation=0, labelsize=6)
+    fig.suptitle(title)
+    fig.tight_layout()
+    return _save(fig, out_dir / stem)
+
+
+def plot_efficiency(efficiency: dict, out_dir: Path, stem: str = "efficiency") -> list[Path]:
+    """Render teacher-vs-student parameter count and forward latency bars."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig, (ax_params, ax_latency) = plt.subplots(1, 2, figsize=(10, 4.5))
+    names = ["teacher", "student"]
+    params_millions = [
+        efficiency["teacher_parameters"] / 1e6,
+        efficiency["student_parameters"] / 1e6,
+    ]
+    latencies = [efficiency["teacher_latency_ms"], efficiency["student_latency_ms"]]
+
+    ax_params.bar(names, params_millions, color=["#4c566a", "#3274a1"])
+    ax_params.set_title("Parameters (millions)")
+    ax_params.bar_label(ax_params.containers[0], fmt="%.1f")
+
+    ax_latency.bar(names, latencies, color=["#4c566a", "#3274a1"])
+    ax_latency.set_title("Forward latency (ms / batch)")
+    ax_latency.bar_label(ax_latency.containers[0], fmt="%.2f")
+
+    fig.suptitle(
+        f"Student is {efficiency['parameter_ratio']:.1f}x smaller, "
+        f"{efficiency['speedup']:.1f}x faster"
+    )
+    fig.tight_layout()
+    return _save(fig, out_dir / stem)
+
+
 def _ordered(df: pd.DataFrame) -> pd.DataFrame:
     frame = df.copy()
     frame["condition"] = pd.Categorical(frame["condition"], CONDITION_ORDER, ordered=True)

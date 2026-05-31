@@ -1,0 +1,166 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "student-kd_hidden-hateval-2026-05-30T09:16:18Z",
+    "stage": "student",
+    "condition": "kd_hidden"
+  },
+  "dataset": {
+    "name": "valeriobasile/HatEval",
+    "config": "default",
+    "num_labels": 2,
+    "label_names": [
+      "not_hate",
+      "hate"
+    ],
+    "input_type": "single_text",
+    "split_scheme": "official",
+    "source_fingerprint": null,
+    "splits": {
+      "train": 13500,
+      "validation": 1500,
+      "test": 4570
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "student_checkpoint": "huawei-noah/TinyBERT_General_4L_312D",
+    "tokenizer": "bert-base-uncased",
+    "teacher_checkpoint": "bert-base-uncased",
+    "parameter_count": 15312410,
+    "projection_parameter_count": 961536
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 2,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/students/hateval/kd_hidden/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24117.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 498.00407,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 844,
+        "epoch_time_seconds": 160.24007,
+        "loss_total": 1.04148,
+        "losses": {
+          "ce": 0.5911,
+          "hidden": 0.45039
+        },
+        "grad_norm_mean": 4.70156,
+        "dev": {
+          "macro_f1": 0.70696,
+          "micro_f1": 0.71667,
+          "accuracy": 0.71667,
+          "ECE": 0.02697,
+          "NLL": 0.54971,
+          "Brier": 0.37157
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 1688,
+        "epoch_time_seconds": 170.33824,
+        "loss_total": 0.85165,
+        "losses": {
+          "ce": 0.45633,
+          "hidden": 0.39531
+        },
+        "grad_norm_mean": 9.95775,
+        "dev": {
+          "macro_f1": 0.74549,
+          "micro_f1": 0.74667,
+          "accuracy": 0.74667,
+          "ECE": 0.05749,
+          "NLL": 0.52393,
+          "Brier": 0.34578
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 2532,
+        "epoch_time_seconds": 157.21402,
+        "loss_total": 0.75052,
+        "losses": {
+          "ce": 0.38596,
+          "hidden": 0.36456
+        },
+        "grad_norm_mean": 12.66323,
+        "dev": {
+          "macro_f1": 0.7584,
+          "micro_f1": 0.762,
+          "accuracy": 0.762,
+          "ECE": 0.04253,
+          "NLL": 0.49406,
+          "Brier": 0.32428
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.7584,
+      "micro_f1": 0.762,
+      "accuracy": 0.762,
+      "per_class_f1": [0.78788, 0.72893],
+      "confusion_matrix": [
+        [663, 188],
+        [169, 480]
+      ],
+      "ECE": 0.04253,
+      "NLL": 0.49406,
+      "Brier": 0.32428
+    },
+    "test": {
+      "macro_f1": 0.53768,
+      "micro_f1": 0.55077,
+      "accuracy": 0.55077,
+      "per_class_f1": [0.45988, 0.61547],
+      "confusion_matrix": [
+        [874, 1784],
+        [269, 1643]
+      ],
+      "ECE": 0.27332,
+      "NLL": 1.03133,
+      "Brier": 0.66244,
+      "teacher_student_analysis": {
+        "top1_agreement": 0.84705,
+        "teacher_student_kl": 0.15363,
+        "teacher_correct_student_wrong": 443,
+        "teacher_wrong_student_correct": 256,
+        "error_copying": 1.0
+      }
+    }
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "teacher-hateval-2026-05-30T09:11:46Z",
+    "stage": "teacher",
+    "condition": null
+  },
+  "dataset": {
+    "name": "valeriobasile/HatEval",
+    "config": "default",
+    "num_labels": 2,
+    "label_names": [
+      "not_hate",
+      "hate"
+    ],
+    "input_type": "single_text",
+    "split_scheme": "official",
+    "source_fingerprint": null,
+    "splits": {
+      "train": 13500,
+      "validation": 1500,
+      "test": 4570
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "checkpoint": "bert-base-uncased",
+    "tokenizer": "bert-base-uncased",
+    "parameter_count": 109483778
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 1,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/teachers/hateval/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24117.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 176.8294,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 844,
+        "epoch_time_seconds": 56.20538,
+        "loss_total": 0.50628,
+        "losses": {
+          "ce": 0.50628
+        },
+        "grad_norm_mean": 5.26769,
+        "dev": {
+          "macro_f1": 0.78636,
+          "micro_f1": 0.78733,
+          "accuracy": 0.78733,
+          "ECE": 0.01651,
+          "NLL": 0.45117,
+          "Brier": 0.29426
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 1688,
+        "epoch_time_seconds": 55.90816,
+        "loss_total": 0.32529,
+        "losses": {
+          "ce": 0.32529
+        },
+        "grad_norm_mean": 6.60012,
+        "dev": {
+          "macro_f1": 0.81294,
+          "micro_f1": 0.816,
+          "accuracy": 0.816,
+          "ECE": 0.06664,
+          "NLL": 0.4325,
+          "Brier": 0.27039
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 2532,
+        "epoch_time_seconds": 55.8171,
+        "loss_total": 0.19243,
+        "losses": {
+          "ce": 0.19243
+        },
+        "grad_norm_mean": 7.50691,
+        "dev": {
+          "macro_f1": 0.81174,
+          "micro_f1": 0.81333,
+          "accuracy": 0.81333,
+          "ECE": 0.0923,
+          "NLL": 0.50065,
+          "Brier": 0.29343
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.81294,
+      "micro_f1": 0.816,
+      "accuracy": 0.816,
+      "per_class_f1": [0.83688, 0.78899],
+      "confusion_matrix": [
+        [708, 143],
+        [133, 516]
+      ],
+      "ECE": 0.06664,
+      "NLL": 0.4325,
+      "Brier": 0.27039
+    },
+    "test": {
+      "macro_f1": 0.57884,
+      "micro_f1": 0.59168,
+      "accuracy": 0.59168,
+      "per_class_f1": [0.5053, 0.65238],
+      "confusion_matrix": [
+        [953, 1705],
+        [161, 1751]
+      ],
+      "ECE": 0.30343,
+      "NLL": 1.3426,
+      "Brier": 0.67808
+    }
+  }
+}

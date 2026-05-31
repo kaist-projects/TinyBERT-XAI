@@ -1,7 +1,7 @@
 {
   "schema_version": "2",
   "run": {
-    "run_id": "teacher-vardial-2026-05-30T09:24:32Z",
+    "run_id": "teacher-vardial-2026-05-31T17:18:28Z",
     "stage": "teacher",
     "condition": null
   },
@@ -20,7 +20,8 @@
     "source_fingerprint": null,
     "splits": {
       "train": 3793,
-      "validation": 475
+      "validation": 475,
+      "test": 475
     },
     "max_seq_length": 128,
     "truncation": true,
@@ -66,12 +67,12 @@
   },
   "training": {
     "epochs_completed": 3,
-    "train_time_seconds": 94.2014,
+    "train_time_seconds": 60.82125,
     "history": [
       {
         "epoch": 0,
         "global_step": 238,
-        "epoch_time_seconds": 28.88697,
+        "epoch_time_seconds": 19.8179,
         "loss_total": 1.23806,
         "losses": {
           "ce": 1.23806
@@ -89,7 +90,7 @@
       {
         "epoch": 1,
         "global_step": 476,
-        "epoch_time_seconds": 27.67888,
+        "epoch_time_seconds": 20.20369,
         "loss_total": 0.83817,
         "losses": {
           "ce": 0.83817
@@ -107,7 +108,7 @@
       {
         "epoch": 2,
         "global_step": 714,
-        "epoch_time_seconds": 31.11047,
+        "epoch_time_seconds": 16.78446,
         "loss_total": 0.53528,
         "losses": {
           "ce": 0.53528
@@ -124,5 +125,36 @@
       }
     ]
   },
-  "metrics": {}
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.74751,
+      "micro_f1": 0.74737,
+      "accuracy": 0.74737,
+      "per_class_f1": [0.75983, 0.74167, 0.74359, 0.74494],
+      "confusion_matrix": [
+        [87, 7, 15, 10],
+        [7, 89, 6, 18],
+        [9, 13, 87, 9],
+        [7, 11, 8, 92]
+      ],
+      "ECE": 0.07964,
+      "NLL": 0.67735,
+      "Brier": 0.36561
+    },
+    "test": {
+      "macro_f1": 0.74305,
+      "micro_f1": 0.74316,
+      "accuracy": 0.74316,
+      "per_class_f1": [0.70042, 0.77366, 0.75862, 0.7395],
+      "confusion_matrix": [
+        [83, 10, 17, 9],
+        [11, 94, 5, 10],
+        [12, 5, 88, 13],
+        [12, 14, 4, 88]
+      ],
+      "ECE": 0.09806,
+      "NLL": 0.70326,
+      "Brier": 0.37922
+    }
+  }
 }

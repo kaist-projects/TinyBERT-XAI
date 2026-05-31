@@ -1,0 +1,165 @@
+{
+  "schema_version": "2",
+  "run": {
+    "run_id": "student-kd_logit-hateval-2026-05-30T09:16:34Z",
+    "stage": "student",
+    "condition": "kd_logit"
+  },
+  "dataset": {
+    "name": "valeriobasile/HatEval",
+    "config": "default",
+    "num_labels": 2,
+    "label_names": [
+      "not_hate",
+      "hate"
+    ],
+    "input_type": "single_text",
+    "split_scheme": "official",
+    "source_fingerprint": null,
+    "splits": {
+      "train": 13500,
+      "validation": 1500,
+      "test": 4570
+    },
+    "max_seq_length": 128,
+    "truncation": true,
+    "padding": "max_length"
+  },
+  "model": {
+    "student_checkpoint": "huawei-noah/TinyBERT_General_4L_312D",
+    "tokenizer": "bert-base-uncased",
+    "teacher_checkpoint": "bert-base-uncased",
+    "parameter_count": 14350874
+  },
+  "optimization": {
+    "optimizer": "AdamW",
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-08,
+    "scheduler": null,
+    "grad_clip": null,
+    "precision": "bf16",
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "num_epochs": 3
+  },
+  "checkpoint_selection": {
+    "monitor": "dev_macro_f1",
+    "mode": "max",
+    "patience": 2,
+    "best_epoch": 2,
+    "early_stopped": false,
+    "checkpoint": "checkpoints/students/hateval/kd_logit/best.pt"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "shuffle_seed_scheme": "seed + epoch"
+  },
+  "environment": {
+    "device": "cuda:0",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_memory_total_mb": 24117.25,
+    "torch_cuda": "12.4"
+  },
+  "training": {
+    "epochs_completed": 3,
+    "train_time_seconds": 492.02414,
+    "history": [
+      {
+        "epoch": 0,
+        "global_step": 844,
+        "epoch_time_seconds": 167.59164,
+        "loss_total": 0.84877,
+        "losses": {
+          "ce": 0.54129,
+          "logit": 0.30747
+        },
+        "grad_norm_mean": 11.23474,
+        "dev": {
+          "macro_f1": 0.72546,
+          "micro_f1": 0.73267,
+          "accuracy": 0.73267,
+          "ECE": 0.02258,
+          "NLL": 0.51491,
+          "Brier": 0.346
+        }
+      },
+      {
+        "epoch": 1,
+        "global_step": 1688,
+        "epoch_time_seconds": 169.58348,
+        "loss_total": 0.61689,
+        "losses": {
+          "ce": 0.42347,
+          "logit": 0.19343
+        },
+        "grad_norm_mean": 16.9026,
+        "dev": {
+          "macro_f1": 0.7749,
+          "micro_f1": 0.77667,
+          "accuracy": 0.77667,
+          "ECE": 0.04682,
+          "NLL": 0.48745,
+          "Brier": 0.31694
+        }
+      },
+      {
+        "epoch": 2,
+        "global_step": 2532,
+        "epoch_time_seconds": 145.66455,
+        "loss_total": 0.50852,
+        "losses": {
+          "ce": 0.36489,
+          "logit": 0.14363
+        },
+        "grad_norm_mean": 18.12988,
+        "dev": {
+          "macro_f1": 0.77615,
+          "micro_f1": 0.77933,
+          "accuracy": 0.77933,
+          "ECE": 0.0609,
+          "NLL": 0.48239,
+          "Brier": 0.31123
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "dev": {
+      "macro_f1": 0.77615,
+      "micro_f1": 0.77933,
+      "accuracy": 0.77933,
+      "per_class_f1": [0.80286, 0.74943],
+      "confusion_matrix": [
+        [674, 177],
+        [154, 495]
+      ],
+      "ECE": 0.0609,
+      "NLL": 0.48239,
+      "Brier": 0.31123
+    },
+    "test": {
+      "macro_f1": 0.55117,
+      "micro_f1": 0.56499,
+      "accuracy": 0.56499,
+      "per_class_f1": [0.4724, 0.62993],
+      "confusion_matrix": [
+        [890, 1768],
+        [220, 1692]
+      ],
+      "ECE": 0.29929,
+      "NLL": 1.15666,
+      "Brier": 0.68526,
+      "teacher_student_analysis": {
+        "top1_agreement": 0.88884,
+        "teacher_student_kl": 0.1123,
+        "teacher_correct_student_wrong": 315,
+        "teacher_wrong_student_correct": 193,
+        "error_copying": 1.0
+      }
+    }
+  }
+}
