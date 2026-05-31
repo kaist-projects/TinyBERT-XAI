@@ -4,13 +4,13 @@ Reads every ``results/students/<dataset>/<condition>/run_metadata.json`` that is
 present and writes the iteration-8 cross-dataset assets under
 ``results/analysis/cross_dataset/``:
 
-- ``figures/cross_task_macro_f1.png`` and ``cross_task_delta.png`` — the headline
+- ``figures/cross_task_macro_f1.png`` and ``cross_task_delta.png``: the headline
   datasets x conditions heatmaps (absolute macro-F1 and delta from ``ce_only``).
-- ``figures/confusion/<dataset>__<condition>.png`` — per-condition confusion
+- ``figures/confusion/<dataset>__<condition>.png``: per-condition confusion
   matrices rendered from the stored counts.
-- ``tables/*.csv`` — cross-task matrices plus tidy calibration, teacher-student,
+- ``tables/*.csv``: cross-task matrices plus tidy calibration, teacher-student,
   and per-dataset factorial-effect tables.
-- ``TABLES.md`` — a generated index of the matrices for quick reading.
+- ``TABLES.md``: a generated index of the matrices for quick reading.
 
 This stage is metadata-only: no checkpoints or GPU. Run
 ``scripts/08b_representation_analysis.py`` for the checkpoint-forward artifacts.

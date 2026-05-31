@@ -3,14 +3,14 @@
 Reloads the saved teacher and student classifiers and runs forward passes on a
 fixed test sample to produce the artifacts that are not in ``run_metadata.json``:
 
-- ``representation/layer_cka.csv`` — linear CKA per mapped pair (no projection
+- ``representation/layer_cka.csv``: linear CKA per mapped pair (no projection
   needed; see ``tinybert_xai/analysis/representations.py`` for why).
-- ``representation/attention_kl.csv`` — head-averaged KL(teacher || student) of
+- ``representation/attention_kl.csv``: head-averaged KL(teacher || student) of
   attention maps per mapped pair.
-- ``figures/cka_mean.png`` — mean-CKA heatmap (dataset x condition).
-- ``representation/attention/*.png`` — teacher-vs-student attention heatmaps for
+- ``figures/cka_mean.png``: mean-CKA heatmap (dataset x condition).
+- ``representation/attention/*.png``: teacher-vs-student attention heatmaps for
   representative examples (``ce_only`` and ``kd_full``).
-- ``representation/efficiency.json`` + ``figures/efficiency.png`` — one
+- ``representation/efficiency.json`` + ``figures/efficiency.png``: one
   teacher-vs-student size/latency comparison (architecture is fixed across
   conditions).
 
@@ -36,7 +36,7 @@ from torch.utils.data import DataLoader, Subset
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-from dataclasses import asdict  # noqa: E402
+from dataclasses import asdict, dataclass  # noqa: E402
 
 from tinybert_xai import (  # noqa: E402
     Config,
@@ -91,32 +91,23 @@ def main() -> None:
     cka_rows: list[dict] = []
     attn_rows: list[dict] = []
     efficiency: dict | None = None
+    skipped: list[tuple[str, str]] = []
     tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)
 
     for dataset in datasets:
-        spec = dataset_by_name(dataset)
-        loader = _sample_loader(cfg, spec, tokenizer, args.sample_size)
-        teacher = _load_teacher(cfg, spec, device)
-        teacher_out = collect_forward_outputs(teacher, loader, device)
-        print(f"[{dataset}] teacher forward done ({len(teacher_out.labels)} examples)")
-
-        for condition in _conditions_for(dataset):
-            student = _load_student(cfg, spec, condition.name, device)
-            student_out = collect_forward_outputs(student, loader, device)
-            cka_rows += _cka_rows(dataset, condition.name, layer_cka(student_out, teacher_out))
-            attn_rows += _attn_rows(dataset, condition.name, attention_kl(student_out, teacher_out))
-
-            if condition.name in HEATMAP_CONDITIONS:
-                _write_attention_heatmaps(
-                    dataset, condition.name, teacher_out, student_out, tokenizer, attention_dir
-                )
-
-            if efficiency is None:
-                efficiency = _measure_efficiency(teacher, student, loader, device)
-            del student, student_out
+        try:
+            result = _analyze_dataset(
+                cfg, dataset, tokenizer, device, args.sample_size, attention_dir,
+                need_efficiency=efficiency is None,
+            )
+        except Exception as exc:  # noqa: BLE001 - one broken dataset must not abort the sweep.
+            print(f"[{dataset}] SKIPPED: {exc}")
+            skipped.append((dataset, str(exc)))
             _empty_cache(device)
-        del teacher, teacher_out
-        _empty_cache(device)
+            continue
+        cka_rows += result.cka_rows
+        attn_rows += result.attn_rows
+        efficiency = efficiency or result.efficiency
 
     _write_csv(cka_rows, representation_dir / "layer_cka.csv")
     _write_csv(attn_rows, representation_dir / "attention_kl.csv")
@@ -125,7 +116,46 @@ def main() -> None:
         _write_efficiency(efficiency, representation_dir, figures_dir)
 
     print("\nRepresentation analysis complete.")
-    _print_summary(cka_rows, attn_rows, efficiency)
+    _print_summary(cka_rows, attn_rows, efficiency, skipped)
+
+
+@dataclass
+class DatasetAnalysis:
+    cka_rows: list[dict]
+    attn_rows: list[dict]
+    efficiency: dict | None
+
+
+def _analyze_dataset(
+    cfg, dataset, tokenizer, device, sample_size, attention_dir, *, need_efficiency
+) -> "DatasetAnalysis":
+    spec = dataset_by_name(dataset)
+    loader = _sample_loader(cfg, spec, tokenizer, sample_size)
+    teacher = _load_teacher(cfg, spec, device)
+    teacher_out = collect_forward_outputs(teacher, loader, device)
+    print(f"[{dataset}] teacher forward done ({len(teacher_out.labels)} examples)")
+
+    cka_rows: list[dict] = []
+    attn_rows: list[dict] = []
+    efficiency: dict | None = None
+    for condition in _conditions_for(dataset):
+        student = _load_student(cfg, spec, condition.name, device)
+        student_out = collect_forward_outputs(student, loader, device)
+        cka_rows += _cka_rows(dataset, condition.name, layer_cka(student_out, teacher_out))
+        attn_rows += _attn_rows(dataset, condition.name, attention_kl(student_out, teacher_out))
+
+        if condition.name in HEATMAP_CONDITIONS:
+            _write_attention_heatmaps(
+                dataset, condition.name, teacher_out, student_out, tokenizer, attention_dir
+            )
+
+        if need_efficiency and efficiency is None:
+            efficiency = _measure_efficiency(teacher, student, loader, device)
+        del student, student_out
+        _empty_cache(device)
+    del teacher, teacher_out
+    _empty_cache(device)
+    return DatasetAnalysis(cka_rows=cka_rows, attn_rows=attn_rows, efficiency=efficiency)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -243,9 +273,15 @@ def _empty_cache(device: str) -> None:
         torch.cuda.empty_cache()
 
 
-def _print_summary(cka_rows: list[dict], attn_rows: list[dict], efficiency: dict | None) -> None:
+def _print_summary(
+    cka_rows: list[dict],
+    attn_rows: list[dict],
+    efficiency: dict | None,
+    skipped: list[tuple[str, str]],
+) -> None:
     if cka_rows:
         cka = pd.DataFrame(cka_rows)
+        print(f"  datasets        : {sorted(cka['dataset'].unique())}")
         print(f"  CKA rows        : {len(cka)} (mean {cka['cka'].mean():.3f})")
     if attn_rows:
         attn = pd.DataFrame(attn_rows)
@@ -255,6 +291,8 @@ def _print_summary(cka_rows: list[dict], attn_rows: list[dict], efficiency: dict
             f"  efficiency      : student {efficiency['parameter_ratio']:.1f}x smaller, "
             f"{efficiency['speedup']:.1f}x faster"
         )
+    if skipped:
+        print(f"  skipped         : {[name for name, _ in skipped]}")
 
 
 if __name__ == "__main__":
