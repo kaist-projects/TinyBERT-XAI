@@ -25,6 +25,7 @@ pass (equivalent to running scripts/02b_eval_student.py afterwards).
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import pathlib
 import sys
 
@@ -54,7 +55,26 @@ def parse_args() -> argparse.Namespace:
     add_dataset_flag(parser)
     add_signal_flags(parser)
     parser.add_argument("--eval", action="store_true", help="evaluate on dev/test after training completes")
+    parser.add_argument("--ce-weight", type=float, default=None, help="coefficient on the CE loss term (default 1.0)")
+    parser.add_argument("--logit-weight", type=float, default=None, help="coefficient on the logit KD term (default 1.0)")
+    parser.add_argument("--hidden-weight", type=float, default=None, help="coefficient on the hidden KD term (default 1.0)")
+    parser.add_argument("--attn-weight", type=float, default=None, help="coefficient on the attention KD term (default 1.0)")
     return parser.parse_args()
+
+
+def apply_loss_weight_overrides(cfg, args):
+    """Return cfg with any explicitly-passed --*-weight flags applied (1.0 otherwise)."""
+    overrides = {
+        field: value
+        for field, value in (
+            ("ce_weight", args.ce_weight),
+            ("logit_weight", args.logit_weight),
+            ("hidden_weight", args.hidden_weight),
+            ("attn_weight", args.attn_weight),
+        )
+        if value is not None
+    }
+    return dataclasses.replace(cfg, **overrides) if overrides else cfg
 
 
 def train_student(cfg, spec, cond, device, teacher_model):
@@ -92,6 +112,7 @@ def evaluate_student(cfg, spec, cond, device, teacher_model):
 def main() -> None:
     cfg = Config()
     args = parse_args()
+    cfg = apply_loss_weight_overrides(cfg, args)
     spec = dataset_from_args(args)
     cond = condition_from_args(args)
 
