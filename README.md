@@ -85,12 +85,7 @@ artifacts:
 
 ### 3.3. Student Distillation
 
-Describe a student run in a YAML config and pass it with `--config`. The file
-sets the dataset, the distillation condition, and any training/loss values, so a
-run is fully reproducible from one file. `configs/default.yaml` is the standard
-setup; `configs/kd_full.yaml` is a worked example. Training needs the teacher
-checkpoint from the previous step and automatically evaluates on dev/test when
-it finishes:
+Describe a student run in a YAML config and pass it with `--config`. `configs/default.yaml` is the standard setup.
 
 ```bash
 python scripts/02_train_student.py --config configs/kd_full.yaml
@@ -98,9 +93,7 @@ python scripts/02_train_student.py --config configs/kd_full.yaml
 
 To define a condition, set which teacher signals the student learns from under
 `run.conditions` (`logit`/`hidden`/`attention`); all off is the `ce_only`
-baseline. Per-signal loss weights and the logit temperature live under
-`distillation` in the same file. See `configs/default.yaml` for the full set of
-keys.
+baseline.
 
 Expected artifacts:
 
