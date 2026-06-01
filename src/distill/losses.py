@@ -161,9 +161,11 @@ def compute_student_losses(
             teacher_out.attentions,
             attention_mask,
         )
-    # Weighted total; per-term magnitudes are reported raw (unscaled) for logging.
-    total = sum(getattr(weights, name) * value for name, value in losses.items())
-    return total, {name: value.item() for name, value in losses.items()}
+    # Apply the per-term weights. Both the total and the reported per-term
+    # magnitudes are weighted, so the logged components sum to the total.
+    weighted = {name: getattr(weights, name) * value for name, value in losses.items()}
+    total = sum(weighted.values())
+    return total, {name: value.item() for name, value in weighted.items()}
 
 
 def _valid_token_pair_mask(attention_mask: torch.Tensor) -> torch.Tensor:

@@ -261,18 +261,22 @@ def test_compute_student_losses_default_weights_match_unweighted_sum():
     assert total.item() == pytest.approx(sum(losses.values()))
 
 
-def test_compute_student_losses_applies_custom_weights():
+def test_compute_student_losses_reports_weighted_components():
     student_out, teacher_out = _logit_student_teacher()
-    weights = LossWeights(ce=2.0, logit=3.0)
+    cond = condition_from_flags(True, False, False)
 
-    total, losses = compute_student_losses(
-        student_out, teacher_out, condition_from_flags(True, False, False), weights=weights
+    _, base = compute_student_losses(student_out, teacher_out, cond)  # default weights -> raw
+    total, weighted = compute_student_losses(
+        student_out, teacher_out, cond, weights=LossWeights(ce=2.0, logit=3.0)
     )
 
-    assert total.item() == pytest.approx(2.0 * losses["ce"] + 3.0 * losses["logit"])
+    # Reported components are scaled by their weight and sum to the total.
+    assert weighted["ce"] == pytest.approx(2.0 * base["ce"])
+    assert weighted["logit"] == pytest.approx(3.0 * base["logit"])
+    assert total.item() == pytest.approx(weighted["ce"] + weighted["logit"])
 
 
-def test_compute_student_losses_zero_weight_drops_term_but_keeps_raw_component():
+def test_compute_student_losses_zero_weight_zeros_term():
     student_out, teacher_out = _logit_student_teacher()
     weights = LossWeights(ce=1.0, logit=0.0)
 
@@ -280,8 +284,8 @@ def test_compute_student_losses_zero_weight_drops_term_but_keeps_raw_component()
         student_out, teacher_out, condition_from_flags(True, False, False), weights=weights
     )
 
-    assert losses["logit"] > 0.0  # raw magnitude still reported
-    assert total.item() == pytest.approx(losses["ce"])  # but excluded from the total
+    assert losses["logit"] == 0.0  # weighted to zero
+    assert total.item() == pytest.approx(losses["ce"])
 
 
 def test_loss_weights_from_config_maps_fields():
