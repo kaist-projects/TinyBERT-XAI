@@ -17,7 +17,7 @@ A **CS graduate course mini-project at KAIST**, Team 18, Spring 2026.
 ## Course constraints (read this first)
 
 - **~2 weeks until final presentation.** Time is the dominant constraint.
-- **Do not reimplement what already exists.** `reference/` is the original TinyBERT authors' repository (`general_distill.py`, `task_distill.py`, `data_augmentation.py`, `transformer/`). Adapt and refactor it. Do not build a parallel implementation from scratch.
+- **Do not reimplement what already exists.** The working implementation lives in `src/` (HuggingFace/PyTorch). Extend and refactor it; do not build a parallel implementation from scratch. The original TinyBERT authors' code is upstream at https://github.com/yinmingjun/TinyBERT if you need to consult it.
 - **Implementation choices favor "good enough + on time" over "elegant + late."** Suggest the leanest path that satisfies the design-doc contract.
 - **Compute is not the bottleneck. Wall-clock to write/debug code is.** A 12 GB GPU runs this comfortably; the schedule does not have room for re-runs of failed implementations.
 
@@ -32,7 +32,6 @@ A **CS graduate course mini-project at KAIST**, Team 18, Spring 2026.
 | `docs/source/03-design-doc.pdf` | **The binding spec.** Korean. When in doubt, this is the source of truth. |
 | `docs/notes/02-project-synthesis.md` | Consolidated reference I wrote that merges all three. **Read this for the full picture.** |
 | `docs/notes/03-roadmap.md` | 9-iteration agile roadmap; check iteration status before starting work. |
-| `reference/` | Original TinyBERT authors' code. Adapt from this. |
 
 ## What's locked by the design doc (do not deviate)
 
@@ -83,7 +82,7 @@ Total runs: **9 teacher fine-tunes + 9 × 8 = 72 student runs = 81 runs.**
 
 ## Working style for this project
 
-1. **Default to adapting `reference/`.** Especially `reference/task_distill.py` (training loop), `reference/transformer/` (model code with hidden-state and attention output hooks already implemented).
+1. **Default to extending `src/`.** The teacher/student training loops live in `src/pipeline/`, the KD losses in `src/distill/`, and the hidden-state/attention hooks in `src/modeling/`. Build on these rather than starting fresh.
 2. **Keep the dataset adapter contract uniform** (see synthesis §4). Adding a dataset later is a 30-min job when the contract is clean, a day when it isn't.
 3. **Log everything the design doc §6/§7 asks for** from day one, in `run_metadata.json` per run. Adding logging fields after runs are done means re-running.
 4. **Pilot on the smallest dataset first** (Davidson or TweetEval-sentiment) before kicking off FEVER/ANLI.
