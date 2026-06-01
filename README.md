@@ -85,35 +85,22 @@ artifacts:
 
 ### 3.3. Student Distillation
 
-Train one student model. Use `--logit`, `--hidden`, and `--attention` to choose
-which teacher signals the student learns from. Using no signal flags runs the
-`ce_only` baseline. Training automatically evaluates on dev/test and writes the
-metrics when it finishes:
-
-```bash
-python scripts/02_train_student.py --dataset tweet_eval-sentiment --logit
-```
-
-KD runs need the teacher checkpoint from the previous step. Combine flags to run
-different conditions; for example, `--logit --attention` becomes
-`kd_logit_attn`, and all three signal flags become `kd_full`.
-
-You can keep a full run setup in YAML instead of typing every flag. The config
-file can set the dataset, condition, and training values. `configs/default.yaml`
-is the standard setup, and `configs/kd_full.yaml` is a worked example.
-Command-line flags still win when both are given:
+Describe a student run in a YAML config and pass it with `--config`. The file
+sets the dataset, the distillation condition, and any training/loss values, so a
+run is fully reproducible from one file. `configs/default.yaml` is the standard
+setup; `configs/kd_full.yaml` is a worked example. Training needs the teacher
+checkpoint from the previous step and automatically evaluates on dev/test when
+it finishes:
 
 ```bash
 python scripts/02_train_student.py --config configs/kd_full.yaml
-python scripts/02_train_student.py --config configs/kd_full.yaml --dataset anli
 ```
 
-Use loss weights only when you want to change how strongly each active signal is
-used. All weights default to `1.0`; set a weight to `0` to turn that part off:
-
-```bash
-python scripts/02_train_student.py --logit --hidden --logit-weight 0.5 --hidden-weight 2.0
-```
+To define a condition, set which teacher signals the student learns from under
+`run.conditions` (`logit`/`hidden`/`attention`); all off is the `ce_only`
+baseline. Per-signal loss weights and the logit temperature live under
+`distillation` in the same file. See `configs/default.yaml` for the full set of
+keys.
 
 Expected artifacts:
 
