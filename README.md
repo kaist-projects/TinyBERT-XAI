@@ -27,7 +27,6 @@ pipeline.
 | [HatEval](https://huggingface.co/datasets/valeriobasile/HatEval) | `hateval` | hate speech | HF-gated |
 | [FEVER](https://huggingface.co/datasets/pietrolesci/nli_fever) | `fever` | NLI | 50K train cap |
 | [VarDial](https://huggingface.co/datasets/statworx/swiss-dialects) | `vardial` | dialect ID | seed-42 80/10/10 split |
-| Multi-VALUE | `multivalue` | dialect ID | generated local CSV |
 
 Local datasets are gitignored: save DynaHate to
 `data/dynahate/dynahate_v0.2.3.csv`, and build Multi-VALUE with
@@ -94,12 +93,6 @@ afterwards):
 python scripts/02_train_student.py --logit --eval
 ```
 
-Or evaluate a saved student separately (same flags select the run):
-
-```bash
-python scripts/02b_eval_student.py --logit
-```
-
 Combine flags for any of the 8 conditions in the experimental conditions table
 below. For example, `--logit --attention` is `kd_logit_attn`, `--logit --hidden
 --attention` is `kd_full`. KD conditions require the teacher checkpoint produced
@@ -119,7 +112,6 @@ exist are skipped unless `--force`:
 
 ```bash
 python scripts/07_run_dataset.py --dataset imdb
-python scripts/07_run_dataset.py --dataset anli --skip-teacher
 ```
 
 ### Analysis
