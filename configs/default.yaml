@@ -1,0 +1,42 @@
+# Canonical run config — reproduces the design-doc §9 locked recipe.
+# Every value here equals the Config() / run defaults, so loading this file is
+# identical to running with no --config. Treat it as the binding recipe for the
+# 81-run factorial; deviating from these values is off-spec (see CLAUDE.md §9).
+#
+# Usage:
+#   python scripts/02_train_student.py --config configs/default.yaml --logit --eval
+# CLI flags override any value below.
+
+run:
+  dataset: tweet_eval-sentiment
+  conditions:              # which KD signals are active; all false -> ce_only
+    logit: false
+    hidden: false
+    attention: false
+  eval: false
+
+model:
+  teacher: bert-base-uncased
+  student: huawei-noah/TinyBERT_General_4L_312D
+  tokenizer: bert-base-uncased
+
+training:
+  seed: 42
+  device: null             # null -> auto (cuda if available, else cpu)
+  precision: bf16
+  max_seq_length: 128
+  learning_rate: 0.00002   # 2e-5
+  train_batch_size: 16
+  eval_batch_size: 32
+  num_epochs: 3
+  # patience: epochs to keep training with no dev_macro_f1 improvement before
+  # early stopping kicks in (the best-so-far checkpoint is kept).
+  patience: 2
+
+distillation:
+  logit_temperature: 1.0
+  loss_weights:
+    ce: 1.0
+    logit: 1.0
+    hidden: 1.0
+    attn: 1.0

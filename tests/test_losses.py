@@ -4,16 +4,16 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from tinybert_xai import condition_from_flags
-from tinybert_xai.config import Config
-from tinybert_xai.distill.losses import (
+from src import condition_from_flags
+from src.config import Config
+from src.distill.losses import (
     LossWeights,
     attention_kd_loss,
     compute_student_losses,
     hidden_kd_loss,
     logit_kd_loss,
 )
-from tinybert_xai.modeling.projections import HiddenProjection
+from src.modeling.projections import HiddenProjection
 
 
 def test_logit_kd_loss_identical_logits_is_zero():
@@ -290,3 +290,14 @@ def test_loss_weights_from_config_maps_fields():
     weights = LossWeights.from_config(cfg)
 
     assert (weights.ce, weights.logit, weights.hidden, weights.attention) == (2.0, 3.0, 4.0, 5.0)
+
+
+def test_compute_student_losses_logit_temperature_changes_logit_term():
+    student_out, teacher_out = _logit_student_teacher()
+
+    _, base = compute_student_losses(student_out, teacher_out, condition_from_flags(True, False, False))
+    _, hot = compute_student_losses(
+        student_out, teacher_out, condition_from_flags(True, False, False), logit_temperature=2.0
+    )
+
+    assert hot["logit"] != pytest.approx(base["logit"])

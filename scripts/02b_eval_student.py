@@ -14,7 +14,7 @@ Usage
 
 Writes
 ------
-    results/students/tweet_eval-sentiment/<condition>/run_metadata.json
+    results/metadata/tweet_eval-sentiment/student/<condition>/run_metadata.json
 """
 
 from __future__ import annotations
@@ -25,12 +25,12 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-from _dataset_cli import add_dataset_flag, dataset_from_args  # noqa: E402
-from _student_cli import add_signal_flags, condition_from_args  # noqa: E402
+from _config_cli import add_config_flag, add_dataset_override, add_signal_overrides, resolve_run_spec  # noqa: E402
 
-from tinybert_xai import (  # noqa: E402
-    Config,
+from src import (  # noqa: E402
+    condition_from_flags,
     configure_reproducibility,
+    dataset_by_name,
     evaluate_saved_student,
     format_student_eval_summary,
     load_trained_teacher,
@@ -41,16 +41,17 @@ from tinybert_xai import (  # noqa: E402
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate a trained TinyBERT student for one distillation condition.")
-    add_dataset_flag(parser)
-    add_signal_flags(parser)
+    add_config_flag(parser)
+    add_dataset_override(parser)
+    add_signal_overrides(parser)
     return parser.parse_args()
 
 
 def main() -> None:
-    cfg = Config()
-    args = parse_args()
-    spec = dataset_from_args(args)
-    cond = condition_from_args(args)
+    run = resolve_run_spec(parse_args())
+    cfg = run.config
+    spec = dataset_by_name(run.dataset)
+    cond = condition_from_flags(run.logit, run.hidden, run.attention)
 
     configure_reproducibility(cfg.seed)
     device = resolve_device(cfg)

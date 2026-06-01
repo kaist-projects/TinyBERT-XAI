@@ -1,6 +1,6 @@
 import torch
 
-from tinybert_xai.analysis.representations import _linear_cka, _masked_row_kl
+from src.analysis.representations import _linear_cka, _masked_row_kl
 
 
 def test_linear_cka_is_one_for_scaled_copies():

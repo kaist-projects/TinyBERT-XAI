@@ -3,10 +3,10 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from tinybert_xai import condition_from_flags
-from tinybert_xai.pipeline.student import train_student_epoch
-from tinybert_xai.pipeline.teacher import train_teacher_epoch
-from tinybert_xai.pipeline.training import TrainStats
+from src import condition_from_flags
+from src.pipeline.student import train_student_epoch
+from src.pipeline.teacher import train_teacher_epoch
+from src.pipeline.training import TrainStats
 
 
 class TinyLossModel(torch.nn.Module):

@@ -45,9 +45,8 @@ pipeline.
 | [VarDial](https://huggingface.co/datasets/statworx/swiss-dialects) | `vardial` | dialect ID | 3,793 / 475 / 475 | seed-42 80/10/10 split |
 
 Local datasets are gitignored: save DynaHate to
-`data/dynahate/dynahate_v0.2.3.csv`, and build Multi-VALUE with
-`scripts/build_multivalue.py`. HatEval requires accepting the Hugging Face terms
-and logging in before use.
+`data/dynahate/dynahate_v0.2.3.csv`. HatEval requires accepting the Hugging Face
+terms and logging in before use.
 
 ## 2. Features
 
@@ -60,6 +59,18 @@ and logging in before use.
 ## 3. Getting Started
 
 Run commands from the repository root.
+
+**Run configuration.** Every training/eval script (and the sweep) accepts
+`--config <file.yaml>`, a single file that describes the whole run: dataset,
+condition, eval, and all hyperparameters. `configs/default.yaml` records the
+design-doc-locked recipe; `configs/kd_full.yaml` is a worked example. Precedence
+is `defaults < YAML < explicit CLI flag`, so any flag below still overrides the
+file, and omitting `--config` reproduces the historical defaults exactly:
+
+```bash
+python scripts/02_train_student.py --config configs/kd_full.yaml          # file drives the run
+python scripts/02_train_student.py --config configs/kd_full.yaml --no-eval # CLI overrides the file
+```
 
 ### 3.1. Environment Setup
 
@@ -81,8 +92,8 @@ python scripts/01_train_teacher.py --dataset tweet_eval-sentiment --eval
 
 Expected artifacts:
 
-- `checkpoints/teachers/tweet_eval-sentiment/best.pt`
-- `results/teachers/tweet_eval-sentiment/run_metadata.json`
+- `results/checkpoints/tweet_eval-sentiment/teacher/best.pt`
+- `results/metadata/tweet_eval-sentiment/teacher/run_metadata.json`
 
 ### 3.3. Student Distillation
 
@@ -114,8 +125,8 @@ python scripts/02_train_student.py --logit --hidden --logit-weight 0.5 --hidden-
 
 Expected artifacts:
 
-- `checkpoints/students/<dataset>/<condition>/best.pt`
-- `results/students/<dataset>/<condition>/run_metadata.json`
+- `results/checkpoints/<dataset>/student/<condition>/best.pt`
+- `results/metadata/<dataset>/student/<condition>/run_metadata.json`
 
 ### 3.4. Full Factorial Sweep
 
@@ -149,7 +160,7 @@ presentation assets. This runs in two stages, written under
 `results/analysis/cross_dataset/`.
 
 **Stage 1, metadata only (no GPU).** Reads every
-`results/students/<dataset>/<condition>/run_metadata.json` that is present:
+`results/metadata/<dataset>/student/<condition>/run_metadata.json` that is present:
 
 ```bash
 python scripts/08_cross_dataset_analysis.py
@@ -178,7 +189,7 @@ The written interpretation (RQ1/RQ2 answers) lives in
 ## 4. Project Structure
 
 ```text
-tinybert_xai/
+src/
   analysis/       Factorial loaders, effect math, tables, plots,
                   cross-dataset roll-ups, and representation (CKA/attention) analysis
   eval/           Metrics and teacher-student analysis
@@ -191,7 +202,6 @@ tinybert_xai/
   utils.py        Cross-cutting helpers (device, param counts, autocast)
 
 scripts/
-  00_smoke_test.py
   01_train_teacher.py
   01b_eval_teacher.py
   02_train_student.py
@@ -232,7 +242,7 @@ results/          Run metadata and analysis outputs
   multi-dataset runs.
 - `reference/` contains the original TinyBERT authors' older codebase for
   comparison. The active implementation is the modern HuggingFace/PyTorch code
-  under `tinybert_xai/`.
+  under `src/`.
 
 ## 7. Acknowledgements
 

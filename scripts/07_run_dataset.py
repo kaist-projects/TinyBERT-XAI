@@ -27,11 +27,11 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-from _dataset_cli import add_dataset_flag, dataset_from_args  # noqa: E402
+from _config_cli import add_config_flag, add_dataset_override, resolve_run_spec  # noqa: E402
 from _student_cli import condition_to_flags  # noqa: E402
 
-from tinybert_xai import ConditionSpec, all_conditions  # noqa: E402
-from tinybert_xai.storage.checkpoints import results_dir, student_dir, teacher_dir  # noqa: E402
+from src import ConditionSpec, all_conditions  # noqa: E402
+from src.storage.checkpoints import metadata_dir, student_dir, teacher_dir  # noqa: E402
 
 SCRIPTS_DIR = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = SCRIPTS_DIR.parent
@@ -39,7 +39,8 @@ REPO_ROOT = SCRIPTS_DIR.parent
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run teacher + all 8 student conditions for one dataset.")
-    add_dataset_flag(parser)
+    add_config_flag(parser)
+    add_dataset_override(parser)
     parser.add_argument("--skip-teacher", action="store_true", help="assume the teacher checkpoint already exists")
     parser.add_argument("--force", action="store_true", help="re-run even when artifacts already exist")
     return parser.parse_args()
@@ -47,12 +48,16 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    spec = dataset_from_args(args)
-    print(f"=== Factorial sweep: {spec.name} ===")
+    run = resolve_run_spec(args)
+    dataset_name = run.dataset
+    # Forward the shared config to every per-run subprocess; --dataset, condition,
+    # and --eval are passed explicitly below so the sweep always runs all 8.
+    config_args = ["--config", str(args.config)] if args.config else []
+    print(f"=== Factorial sweep: {dataset_name} ===")
 
-    run_teacher(spec.name, skip=args.skip_teacher, force=args.force)
+    run_teacher(dataset_name, config_args, skip=args.skip_teacher, force=args.force)
 
-    failures = run_all_conditions(spec.name, force=args.force)
+    failures = run_all_conditions(dataset_name, config_args, force=args.force)
 
     print("\n=== Sweep complete ===")
     if failures:
@@ -61,7 +66,7 @@ def main() -> None:
     print("  all conditions present.")
 
 
-def run_teacher(dataset_name: str, *, skip: bool, force: bool) -> None:
+def run_teacher(dataset_name: str, config_args: list[str], *, skip: bool, force: bool) -> None:
     if skip:
         print("[teacher] skipped (--skip-teacher)")
         return
@@ -69,10 +74,10 @@ def run_teacher(dataset_name: str, *, skip: bool, force: bool) -> None:
         print("[teacher] skipped (checkpoint exists)")
         return
     print("[teacher] training ...")
-    run_script("01_train_teacher.py", ["--dataset", dataset_name])
+    run_script("01_train_teacher.py", [*config_args, "--dataset", dataset_name])
 
 
-def run_all_conditions(dataset_name: str, *, force: bool) -> list[str]:
+def run_all_conditions(dataset_name: str, config_args: list[str], *, force: bool) -> list[str]:
     failures: list[str] = []
     for cond in all_conditions():
         if condition_done(dataset_name, cond) and not force:
@@ -80,7 +85,10 @@ def run_all_conditions(dataset_name: str, *, force: bool) -> list[str]:
             continue
         print(f"[{cond.name}] training + evaluating ...")
         try:
-            run_script("02_train_student.py", ["--dataset", dataset_name, *condition_to_flags(cond), "--eval"])
+            run_script(
+                "02_train_student.py",
+                [*config_args, "--dataset", dataset_name, *condition_to_flags(cond), "--eval"],
+            )
         except subprocess.CalledProcessError:
             print(f"[{cond.name}] FAILED")
             failures.append(cond.name)
@@ -93,7 +101,7 @@ def teacher_done(dataset_name: str) -> bool:
 
 def condition_done(dataset_name: str, cond: ConditionSpec) -> bool:
     best_ckpt = REPO_ROOT / student_dir(dataset_name, cond.name) / "best.pt"
-    metadata = REPO_ROOT / results_dir("student", dataset_name, cond.name) / "run_metadata.json"
+    metadata = REPO_ROOT / metadata_dir(dataset_name, "student", cond.name) / "run_metadata.json"
     return best_ckpt.exists() and _has_test_metrics(metadata)
 
 

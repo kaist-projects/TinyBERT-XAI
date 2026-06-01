@@ -4,8 +4,8 @@ Dataset: `tweet_eval-sentiment`
 
 ## Artifact Summary
 
-- Teacher metadata: `results/teachers/tweet_eval-sentiment/run_metadata.json`
-- Student metadata: `results/students/tweet_eval-sentiment/*/run_metadata.json`
+- Teacher metadata: `results/metadata/tweet_eval-sentiment/teacher/run_metadata.json`
+- Student metadata: `results/metadata/tweet_eval-sentiment/student/*/run_metadata.json`
 - Report: `results/analysis/tweet_eval-sentiment/REPORT.md`
 - Figures: `figures/`
 
@@ -37,8 +37,8 @@ resolved causal estimates.
 Dataset: `tweet_eval-sentiment`
 
 Source files:
-`results/teachers/tweet_eval-sentiment/run_metadata.json` and
-`results/students/tweet_eval-sentiment/*/run_metadata.json`
+`results/metadata/tweet_eval-sentiment/teacher/run_metadata.json` and
+`results/metadata/tweet_eval-sentiment/student/*/run_metadata.json`
 
 Primary metric: test macro-F1. `Delta` is test macro-F1 relative to `ce_only`.
 Rows are ordered by test macro-F1 descending.

@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import sklearn.metrics as skm
 
-from tinybert_xai.eval.metrics import _calibration_metrics
+from src.eval.metrics import _calibration_metrics
 
 
 def test_calibration_metrics_match_expected_nll_and_brier():

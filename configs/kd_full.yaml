@@ -1,0 +1,15 @@
+# Example: the kd_full condition (all three KD signals) on IMDB, train + eval.
+# Omitted keys fall back to Config() / locked defaults, so only the run-level
+# choices need to appear here.
+#
+#   python scripts/02_train_student.py --config configs/kd_full.yaml
+#
+# Override anything from the CLI, e.g. add --no-eval or --attn-weight 152.
+
+run:
+  dataset: imdb
+  conditions:
+    logit: true
+    hidden: true
+    attention: true
+  eval: true

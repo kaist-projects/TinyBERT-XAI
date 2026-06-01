@@ -1,6 +1,6 @@
 """Roll up every completed factorial sweep into cross-dataset artifacts.
 
-Reads every ``results/students/<dataset>/<condition>/run_metadata.json`` that is
+Reads every ``results/metadata/<dataset>/student/<condition>/run_metadata.json`` that is
 present and writes the iteration-8 cross-dataset assets under
 ``results/analysis/cross_dataset/``:
 
@@ -26,28 +26,28 @@ import pandas as pd
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-from tinybert_xai.analysis.cross_dataset import (  # noqa: E402
+from src.analysis.cross_dataset import (  # noqa: E402
     aggregate_calibration,
     aggregate_main_effects,
     aggregate_teacher_student,
     cross_task_matrix,
     delta_matrix,
 )
-from tinybert_xai.analysis.loaders import load_all_runs  # noqa: E402
-from tinybert_xai.analysis.plots import (  # noqa: E402
+from src import cross_dataset_dir  # noqa: E402
+from src.analysis.loaders import load_all_runs  # noqa: E402
+from src.analysis.plots import (  # noqa: E402
     plot_confusion_matrix,
     plot_cross_task_heatmap,
 )
 
-ANALYSIS_ROOT = pathlib.Path("results") / "analysis" / "cross_dataset"
-RESULTS_ROOT = pathlib.Path("results")
+ANALYSIS_ROOT = cross_dataset_dir()
 PRIMARY_METRIC = "test_macro_f1"
 
 
 def main() -> None:
     df = load_all_runs()
     if df.empty:
-        raise SystemExit("no student runs found under results/students/")
+        raise SystemExit("no student runs found under results/metadata/")
 
     figures_dir, tables_dir = _prepare_output_dirs()
 

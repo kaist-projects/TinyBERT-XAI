@@ -1,13 +1,13 @@
 import pandas as pd
 import pytest
 
-from tinybert_xai.analysis.factorial import (
+from src.analysis.factorial import (
     effects_table,
     interaction_2way,
     interaction_3way,
     main_effect,
 )
-from tinybert_xai.distill.conditions import all_conditions
+from src.distill.conditions import all_conditions
 
 
 def _frame(values):

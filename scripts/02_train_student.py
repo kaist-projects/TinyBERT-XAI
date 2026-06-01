@@ -13,9 +13,9 @@ Usage
 
 Output
 ------
-    checkpoints/students/tweet_eval-sentiment/<condition>/
+    results/checkpoints/tweet_eval-sentiment/student/<condition>/
         epoch_0.pt, epoch_1.pt, ..., best.pt
-    results/students/tweet_eval-sentiment/<condition>/
+    results/metadata/tweet_eval-sentiment/student/<condition>/
         run_metadata.json
 
 With --eval, the run_metadata.json is patched with dev/test metrics in the same
@@ -25,18 +25,24 @@ pass (equivalent to running scripts/02b_eval_student.py afterwards).
 from __future__ import annotations
 
 import argparse
-import dataclasses
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-from _dataset_cli import add_dataset_flag, dataset_from_args  # noqa: E402
-from _student_cli import add_signal_flags, condition_from_args  # noqa: E402
+from _config_cli import (  # noqa: E402
+    add_config_flag,
+    add_dataset_override,
+    add_eval_override,
+    add_signal_overrides,
+    add_weight_overrides,
+    resolve_run_spec,
+)
 
-from tinybert_xai import (  # noqa: E402
-    Config,
+from src import (  # noqa: E402
+    condition_from_flags,
     configure_reproducibility,
+    dataset_by_name,
     evaluate_saved_student,
     fine_tune_student,
     format_student_eval_summary,
@@ -52,29 +58,12 @@ from tinybert_xai import (  # noqa: E402
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train a TinyBERT student for one distillation condition.")
-    add_dataset_flag(parser)
-    add_signal_flags(parser)
-    parser.add_argument("--eval", action="store_true", help="evaluate on dev/test after training completes")
-    parser.add_argument("--ce-weight", type=float, default=None, help="coefficient on the CE loss term (default 1.0)")
-    parser.add_argument("--logit-weight", type=float, default=None, help="coefficient on the logit KD term (default 1.0)")
-    parser.add_argument("--hidden-weight", type=float, default=None, help="coefficient on the hidden KD term (default 1.0)")
-    parser.add_argument("--attn-weight", type=float, default=None, help="coefficient on the attention KD term (default 1.0)")
+    add_config_flag(parser)
+    add_dataset_override(parser)
+    add_signal_overrides(parser)
+    add_eval_override(parser)
+    add_weight_overrides(parser)
     return parser.parse_args()
-
-
-def apply_loss_weight_overrides(cfg, args):
-    """Return cfg with any explicitly-passed --*-weight flags applied (1.0 otherwise)."""
-    overrides = {
-        field: value
-        for field, value in (
-            ("ce_weight", args.ce_weight),
-            ("logit_weight", args.logit_weight),
-            ("hidden_weight", args.hidden_weight),
-            ("attn_weight", args.attn_weight),
-        )
-        if value is not None
-    }
-    return dataclasses.replace(cfg, **overrides) if overrides else cfg
 
 
 def train_student(cfg, spec, cond, device, teacher_model):
@@ -110,11 +99,10 @@ def evaluate_student(cfg, spec, cond, device, teacher_model):
 
 
 def main() -> None:
-    cfg = Config()
-    args = parse_args()
-    cfg = apply_loss_weight_overrides(cfg, args)
-    spec = dataset_from_args(args)
-    cond = condition_from_args(args)
+    run = resolve_run_spec(parse_args())
+    cfg = run.config
+    spec = dataset_by_name(run.dataset)
+    cond = condition_from_flags(run.logit, run.hidden, run.attention)
 
     configure_reproducibility(cfg.seed)
     device = resolve_device(cfg)
@@ -124,13 +112,13 @@ def main() -> None:
     # The teacher is needed for KD training and, when --eval is set, for the
     # teacher-student analysis on every condition (matching 02b_eval_student.py).
     teacher_model = None
-    if cond.uses_teacher or args.eval:
+    if cond.uses_teacher or run.eval:
         print("Loading teacher checkpoint ...")
         teacher_model = load_trained_teacher(cfg, spec, device)
 
     train_student(cfg, spec, cond, device, teacher_model if cond.uses_teacher else None)
 
-    if args.eval:
+    if run.eval:
         evaluate_student(cfg, spec, cond, device, teacher_model)
 
 
