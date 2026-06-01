@@ -4,8 +4,8 @@
 # 81-run factorial; deviating from these values is off-spec (see CLAUDE.md §9).
 #
 # Usage:
-#   python scripts/02_train_student.py --config configs/default.yaml --logit --eval
-# CLI flags override any value below.
+#   python scripts/02_train_student.py --config configs/default.yaml --logit
+# CLI flags override any value below. Training always evaluates on dev/test.
 
 run:
   dataset: tweet_eval-sentiment
@@ -13,7 +13,6 @@ run:
     logit: false
     hidden: false
     attention: false
-  eval: false
 
 model:
   teacher: bert-base-uncased

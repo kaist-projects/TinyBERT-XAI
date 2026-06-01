@@ -1,8 +1,7 @@
-"""Shared --dataset CLI glue for the teacher/student scripts.
+"""Shared --dataset CLI glue.
 
-Imported by scripts/01_train_teacher.py, 02_train_student.py, and
-02b_eval_student.py, all of which insert the repo root onto sys.path before
-importing this module, so the ``from src import ...`` below resolves.
+Scripts that import this insert the repo root onto sys.path first, so the
+``from src import ...`` below resolves.
 """
 
 from __future__ import annotations

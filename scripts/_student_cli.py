@@ -1,8 +1,7 @@
-"""Shared CLI glue for the student train/eval scripts.
+"""Shared student-condition CLI glue.
 
-Imported by scripts/02_train_student.py and scripts/02b_eval_student.py, both of
-which insert the repo root onto sys.path before importing this module, so the
-``from src import ...`` below resolves.
+``condition_to_flags`` is used by scripts/07_run_dataset.py to reconstruct the
+``--logit``/``--hidden``/``--attention`` flags for each condition subprocess.
 """
 
 from __future__ import annotations

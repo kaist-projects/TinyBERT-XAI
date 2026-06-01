@@ -60,18 +60,6 @@ terms and logging in before use.
 
 Run commands from the repository root.
 
-**Run configuration.** Every training/eval script (and the sweep) accepts
-`--config <file.yaml>`, a single file that describes the whole run: dataset,
-condition, eval, and all hyperparameters. `configs/default.yaml` records the
-design-doc-locked recipe; `configs/kd_full.yaml` is a worked example. Precedence
-is `defaults < YAML < explicit CLI flag`, so any flag below still overrides the
-file, and omitting `--config` reproduces the historical defaults exactly:
-
-```bash
-python scripts/02_train_student.py --config configs/kd_full.yaml          # file drives the run
-python scripts/02_train_student.py --config configs/kd_full.yaml --no-eval # CLI overrides the file
-```
-
 ### 3.1. Environment Setup
 
 ```bash
@@ -80,44 +68,48 @@ conda activate tinybert-xai
 pip install -r requirements.txt
 ```
 
-
 ### 3.2. Teacher Fine-Tuning
 
 Train the BERT teacher (`--dataset` selects a registered dataset; default
 `tweet_eval-sentiment`, also `imdb`, `anli`):
 
 ```bash
-python scripts/01_train_teacher.py --dataset tweet_eval-sentiment --eval
+python scripts/01_train_teacher.py --dataset tweet_eval-sentiment
 ```
 
-Expected artifacts:
+Training automatically evaluates on dev/test when it finishes. Expected
+artifacts:
 
 - `results/checkpoints/tweet_eval-sentiment/teacher/best.pt`
 - `results/metadata/tweet_eval-sentiment/teacher/run_metadata.json`
 
 ### 3.3. Student Distillation
 
-Train one student condition by toggling distillation signals with flags
-(`--logit`, `--hidden`, `--attention`); no flags means the `ce_only` baseline.
-`--dataset` selects the dataset (same choices as the teacher):
+Train one student model. Use `--logit`, `--hidden`, and `--attention` to choose
+which teacher signals the student learns from. Using no signal flags runs the
+`ce_only` baseline. Training automatically evaluates on dev/test and writes the
+metrics when it finishes:
 
 ```bash
-python scripts/02_train_student.py --dataset tweet_eval-sentiment --logit --eval
+python scripts/02_train_student.py --dataset tweet_eval-sentiment --logit
 ```
 
-Pass `--eval` to chain evaluation onto training in one pass, patching the run's
-metadata with dev/test metrics.
+KD runs need the teacher checkpoint from the previous step. Combine flags to run
+different conditions; for example, `--logit --attention` becomes
+`kd_logit_attn`, and all three signal flags become `kd_full`.
 
-Combine flags for any of the 8 conditions in the experimental conditions table
-below. For example, `--logit --attention` is `kd_logit_attn`, `--logit --hidden
---attention` is `kd_full`. KD conditions require the teacher checkpoint produced
-by the teacher fine-tuning step.
+You can keep a full run setup in YAML instead of typing every flag. The config
+file can set the dataset, condition, and training values. `configs/default.yaml`
+is the standard setup, and `configs/kd_full.yaml` is a worked example.
+Command-line flags still win when both are given:
 
-The total loss is `L = α·CE + β·logit + γ·hidden + δ·attn`. Each coefficient is
-tunable via `--ce-weight`, `--logit-weight`, `--hidden-weight`, and
-`--attn-weight` (all default `1.0`, which reproduces the standard unweighted sum;
-`0` disables a term's contribution). Weights only scale terms already enabled by
-the condition flags above, so the default leaves every condition unchanged:
+```bash
+python scripts/02_train_student.py --config configs/kd_full.yaml
+python scripts/02_train_student.py --config configs/kd_full.yaml --dataset anli
+```
+
+Use loss weights only when you want to change how strongly each active signal is
+used. All weights default to `1.0`; set a weight to `0` to turn that part off:
 
 ```bash
 python scripts/02_train_student.py --logit --hidden --logit-weight 0.5 --hidden-weight 2.0
@@ -202,10 +194,8 @@ src/
   utils.py        Cross-cutting helpers (device, param counts, autocast)
 
 scripts/
-  01_train_teacher.py
-  01b_eval_teacher.py
-  02_train_student.py
-  02b_eval_student.py
+  01_train_teacher.py            Teacher fine-tune + auto dev/test eval
+  02_train_student.py            Student distillation + auto dev/test eval
   06_analyze_factorial.py        Per-dataset factorial report
   07_run_dataset.py              Teacher + all 8 conditions for one dataset
   08_cross_dataset_analysis.py   Cross-task heatmaps + tables (metadata only)

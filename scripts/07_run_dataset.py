@@ -50,8 +50,9 @@ def main() -> None:
     args = parse_args()
     run = resolve_run_spec(args)
     dataset_name = run.dataset
-    # Forward the shared config to every per-run subprocess; --dataset, condition,
-    # and --eval are passed explicitly below so the sweep always runs all 8.
+    # Forward the shared config to every per-run subprocess; --dataset and the
+    # condition flags are passed explicitly below so the sweep always runs all 8.
+    # Each per-run script evaluates automatically after training.
     config_args = ["--config", str(args.config)] if args.config else []
     print(f"=== Factorial sweep: {dataset_name} ===")
 
@@ -87,7 +88,7 @@ def run_all_conditions(dataset_name: str, config_args: list[str], *, force: bool
         try:
             run_script(
                 "02_train_student.py",
-                [*config_args, "--dataset", dataset_name, *condition_to_flags(cond), "--eval"],
+                [*config_args, "--dataset", dataset_name, *condition_to_flags(cond)],
             )
         except subprocess.CalledProcessError:
             print(f"[{cond.name}] FAILED")

@@ -1,25 +1,23 @@
 """scripts/01_train_teacher.py — Teacher fine-tuning on TweetEval-sentiment.
 
-Iteration 1 deliverable.  Trains bert-base-uncased on TweetEval-sentiment,
-applies early stopping on dev macro-F1 (patience=2), saves one checkpoint per
-epoch plus best.pt, and writes results/metadata/tweet_eval-sentiment/teacher/run_metadata.json.
+Trains bert-base-uncased on the chosen dataset, applies early stopping on dev
+macro-F1 (patience=2), saves one checkpoint per epoch plus best.pt, then
+evaluates on dev/test and writes
+results/metadata/<dataset>/teacher/run_metadata.json. Evaluation always runs at
+the end of training.
 
 Usage
 -----
     conda activate tinybert-xai
     # from repo root
     python scripts/01_train_teacher.py --dataset imdb          # default: tweet_eval-sentiment
-    python scripts/01_train_teacher.py --dataset imdb --eval   # train, then evaluate
 
 Output
 ------
     results/checkpoints/<dataset>/teacher/
         epoch_0.pt, epoch_1.pt, ..., best.pt
     results/metadata/<dataset>/teacher/
-        run_metadata.json
-
-With --eval, the run_metadata.json is patched with dev/test metrics in the same
-pass (equivalent to running scripts/01b_eval_teacher.py afterwards).
+        run_metadata.json   (with dev/test metrics)
 """
 
 from __future__ import annotations
@@ -30,7 +28,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-from _config_cli import add_config_flag, add_dataset_override, add_eval_override, resolve_run_spec  # noqa: E402
+from _config_cli import add_config_flag, add_dataset_override, resolve_run_spec  # noqa: E402
 
 from src import (  # noqa: E402
     configure_reproducibility,
@@ -51,7 +49,6 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fine-tune the teacher (bert-base-uncased) on one dataset.")
     add_config_flag(parser)
     add_dataset_override(parser)
-    add_eval_override(parser)
     return parser.parse_args()
 
 
@@ -94,9 +91,7 @@ def main() -> None:
     print(f"Device: {device}")
 
     train_teacher(cfg, spec, device)
-
-    if run.eval:
-        evaluate_teacher(cfg, spec, device)
+    evaluate_teacher(cfg, spec, device)
 
 
 if __name__ == "__main__":

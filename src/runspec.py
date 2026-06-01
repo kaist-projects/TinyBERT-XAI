@@ -1,10 +1,11 @@
-"""YAML run specification: one file fully describes a training/eval run.
+"""YAML run specification: one file fully describes a training run.
 
 A ``RunSpec`` bundles the training ``Config`` (hyperparameters) with the
-run-level selections that are not hyperparameters: which dataset, which
-distillation condition, and whether to chain evaluation. ``load_run_spec`` reads
-a YAML file into a ``RunSpec``; omitted keys fall back to ``Config()`` / run
-defaults, and unknown keys raise ``ValueError`` to catch typos.
+run-level selections that are not hyperparameters: which dataset and which
+distillation condition. Training always evaluates on dev/test at the end, so
+evaluation is not a config option. ``load_run_spec`` reads a YAML file into a
+``RunSpec``; omitted keys fall back to ``Config()`` / run defaults, and unknown
+keys raise ``ValueError`` to catch typos.
 
 The committed ``configs/default.yaml`` reproduces the design-doc-locked recipe,
 so an empty/absent config is byte-for-byte the historical CLI default.
@@ -41,7 +42,7 @@ _TRAINING_KEYS = {
     "patience": "patience",
 }
 _LOSS_WEIGHT_KEYS = {"ce": "ce_weight", "logit": "logit_weight", "hidden": "hidden_weight", "attn": "attn_weight"}
-_RUN_KEYS = {"dataset", "conditions", "eval"}
+_RUN_KEYS = {"dataset", "conditions"}
 _DISTILL_KEYS = {"logit_temperature", "loss_weights"}
 _TOP_KEYS = {"run", "model", "training", "distillation"}
 
@@ -53,7 +54,6 @@ class RunSpec:
     logit: bool = False
     hidden: bool = False
     attention: bool = False
-    eval: bool = False
 
 
 def load_run_spec(path: str | Path) -> RunSpec:
@@ -79,7 +79,6 @@ def run_spec_from_mapping(mapping: dict) -> RunSpec:
         logit=logit,
         hidden=hidden,
         attention=attention,
-        eval=bool(run.get("eval", False)),
     )
 
 

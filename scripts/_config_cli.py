@@ -3,10 +3,10 @@
 Precedence is ``Config()`` / run defaults < YAML (``--config``) < explicit CLI
 flags. Override flags register with ``argparse.SUPPRESS`` so only the ones the
 user actually passes land in the namespace; anything absent keeps the YAML/base
-value. Boolean flags use ``BooleanOptionalAction`` (``--eval/--no-eval``,
-``--logit/--no-logit``, ...) so the CLI can both set and unset a YAML baseline.
+value. Boolean flags use ``BooleanOptionalAction`` (``--logit/--no-logit``, ...)
+so the CLI can both set and unset a YAML baseline.
 
-Imported by the teacher/student train + eval scripts, which insert the repo root
+Imported by the teacher/student training scripts, which insert the repo root
 onto sys.path first, so ``from src import ...`` resolves.
 """
 
@@ -47,15 +47,6 @@ def add_signal_overrides(parser: argparse.ArgumentParser) -> None:
         )
 
 
-def add_eval_override(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--eval",
-        action=argparse.BooleanOptionalAction,
-        default=argparse.SUPPRESS,
-        help="evaluate on dev/test after training (overrides run.eval)",
-    )
-
-
 def add_weight_overrides(parser: argparse.ArgumentParser) -> None:
     for name in ("ce", "logit", "hidden", "attn"):
         parser.add_argument(
@@ -71,7 +62,7 @@ def resolve_run_spec(args: argparse.Namespace) -> RunSpec:
     base = load_run_spec(args.config) if getattr(args, "config", None) else RunSpec()
 
     config = replace(base.config, **_present(args, _CONFIG_OVERRIDES))
-    run_overrides = _present(args, ("dataset", "eval", *_SIGNALS))
+    run_overrides = _present(args, ("dataset", *_SIGNALS))
     return replace(base, config=config, **run_overrides)
 
 

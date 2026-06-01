@@ -1,7 +1,8 @@
 """scripts/02_train_student.py - TinyBERT student training.
 
 Trains huawei-noah/TinyBERT_General_4L_312D on TweetEval-sentiment for the
-selected condition, writes a best checkpoint, and records schema-v2 metadata.
+selected condition, writes a best checkpoint, then evaluates it on dev/test and
+records schema-v2 metadata. Evaluation always runs at the end of training.
 
 Usage
 -----
@@ -9,17 +10,13 @@ Usage
     # from repo root
     python scripts/02_train_student.py --logit --attention   # condition kd_logit_attn
     python scripts/02_train_student.py                        # no flags -> ce_only
-    python scripts/02_train_student.py --logit --eval         # train, then evaluate
 
 Output
 ------
     results/checkpoints/tweet_eval-sentiment/student/<condition>/
         epoch_0.pt, epoch_1.pt, ..., best.pt
     results/metadata/tweet_eval-sentiment/student/<condition>/
-        run_metadata.json
-
-With --eval, the run_metadata.json is patched with dev/test metrics in the same
-pass (equivalent to running scripts/02b_eval_student.py afterwards).
+        run_metadata.json   (with dev/test metrics)
 """
 
 from __future__ import annotations
@@ -33,7 +30,6 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from _config_cli import (  # noqa: E402
     add_config_flag,
     add_dataset_override,
-    add_eval_override,
     add_signal_overrides,
     add_weight_overrides,
     resolve_run_spec,
@@ -61,7 +57,6 @@ def parse_args() -> argparse.Namespace:
     add_config_flag(parser)
     add_dataset_override(parser)
     add_signal_overrides(parser)
-    add_eval_override(parser)
     add_weight_overrides(parser)
     return parser.parse_args()
 
@@ -109,17 +104,13 @@ def main() -> None:
     print(f"Device: {device}")
     print(f"Condition: {cond.name}")
 
-    # The teacher is needed for KD training and, when --eval is set, for the
-    # teacher-student analysis on every condition (matching 02b_eval_student.py).
-    teacher_model = None
-    if cond.uses_teacher or run.eval:
-        print("Loading teacher checkpoint ...")
-        teacher_model = load_trained_teacher(cfg, spec, device)
+    # The teacher is always needed: for KD training (when the condition uses it)
+    # and for the post-training teacher-student analysis on every condition.
+    print("Loading teacher checkpoint ...")
+    teacher_model = load_trained_teacher(cfg, spec, device)
 
     train_student(cfg, spec, cond, device, teacher_model if cond.uses_teacher else None)
-
-    if run.eval:
-        evaluate_student(cfg, spec, cond, device, teacher_model)
+    evaluate_student(cfg, spec, cond, device, teacher_model)
 
 
 if __name__ == "__main__":

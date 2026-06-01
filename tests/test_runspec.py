@@ -13,13 +13,13 @@ def test_empty_mapping_reproduces_locked_defaults():
 
     assert spec.config == Config()
     assert spec.dataset == "tweet_eval-sentiment"
-    assert (spec.logit, spec.hidden, spec.attention, spec.eval) == (False, False, False, False)
+    assert (spec.logit, spec.hidden, spec.attention) == (False, False, False)
 
 
 def test_full_mapping_maps_every_field():
     spec = run_spec_from_mapping(
         {
-            "run": {"dataset": "imdb", "conditions": {"logit": True, "attention": True}, "eval": True},
+            "run": {"dataset": "imdb", "conditions": {"logit": True, "attention": True}},
             "model": {"teacher": "bert-x", "student": "tiny-y", "tokenizer": "tok-z"},
             "training": {
                 "seed": 7,
@@ -39,7 +39,7 @@ def test_full_mapping_maps_every_field():
         }
     )
 
-    assert (spec.dataset, spec.eval) == ("imdb", True)
+    assert spec.dataset == "imdb"
     assert (spec.logit, spec.hidden, spec.attention) == (True, False, True)
     c = spec.config
     assert (c.teacher_checkpoint, c.student_checkpoint, c.tokenizer_checkpoint) == ("bert-x", "tiny-y", "tok-z")
@@ -63,6 +63,7 @@ def test_partial_mapping_falls_back_to_defaults():
         {"bogus": 1},  # unknown top-level
         {"training": {"learning_rat": 1.0}},  # typo'd nested key
         {"distillation": {"loss_weights": {"attention": 1.0}}},  # wrong weight key (attn, not attention)
+        {"run": {"eval": True}},  # eval is no longer a config option (training always evaluates)
     ],
 )
 def test_unknown_key_raises(mapping):
@@ -97,36 +98,32 @@ def _resolver():
 def test_cli_flag_overrides_yaml(tmp_path):
     cc = _resolver()
     cfg_file = tmp_path / "c.yaml"
-    cfg_file.write_text("run:\n  dataset: imdb\n  eval: true\ndistillation:\n  loss_weights:\n    logit: 2.0\n")
+    cfg_file.write_text("run:\n  dataset: imdb\ndistillation:\n  loss_weights:\n    logit: 2.0\n")
 
     parser = argparse.ArgumentParser()
     cc.add_config_flag(parser)
     cc.add_dataset_override(parser)
-    cc.add_eval_override(parser)
     cc.add_signal_overrides(parser)
     cc.add_weight_overrides(parser)
 
-    # CLI overrides dataset + eval + one weight; condition signal added on top.
-    args = parser.parse_args(["--config", str(cfg_file), "--dataset", "anli", "--no-eval", "--logit-weight", "9.0"])
+    # CLI overrides dataset + one weight; condition signal added on top.
+    args = parser.parse_args(["--config", str(cfg_file), "--dataset", "anli", "--logit-weight", "9.0"])
     spec = cc.resolve_run_spec(args)
 
     assert spec.dataset == "anli"  # CLI beats YAML
-    assert spec.eval is False  # --no-eval beats YAML eval: true
     assert spec.config.logit_weight == 9.0  # CLI beats YAML's 2.0
 
 
 def test_absent_flag_keeps_yaml_value(tmp_path):
     cc = _resolver()
     cfg_file = tmp_path / "c.yaml"
-    cfg_file.write_text("run:\n  dataset: imdb\n  eval: true\n")
+    cfg_file.write_text("run:\n  dataset: imdb\n")
 
     parser = argparse.ArgumentParser()
     cc.add_config_flag(parser)
     cc.add_dataset_override(parser)
-    cc.add_eval_override(parser)
 
     args = parser.parse_args(["--config", str(cfg_file)])  # no overrides
     spec = cc.resolve_run_spec(args)
 
     assert spec.dataset == "imdb"  # YAML retained
-    assert spec.eval is True
