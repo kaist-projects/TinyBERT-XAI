@@ -188,7 +188,6 @@ scripts/
 
 tests/            Unit tests for losses, metrics, run logs, and factorial math
 docs/             Notes, plans, and source project documents
-reference/        Original TinyBERT reference code used for comparison only
 results/          Run metadata and analysis outputs
 ```
 
@@ -231,12 +230,12 @@ training. To balance them, per-dataset starting points are:
   loss magnitude averages about `0.00453`, much smaller than CE, logit, and
   hidden losses. This should be fixed or explicitly documented before larger
   multi-dataset runs.
-- `reference/` contains the original TinyBERT authors' older codebase for
-  comparison. The active implementation is the modern HuggingFace/PyTorch code
-  under `src/`.
 
 ## 8. Acknowledgements
 
 This project builds on the TinyBERT distillation idea and uses HuggingFace
 Transformers/Datasets for the modern implementation. It was developed as a final
 project for KAIST CS50700 Deep Learning.
+
+The original TinyBERT reference implementation it adapts is at
+[yinmingjun/TinyBERT](https://github.com/yinmingjun/TinyBERT).
