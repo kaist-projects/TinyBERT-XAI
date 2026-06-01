@@ -3,7 +3,7 @@ import math
 import pytest
 import torch
 
-from tinybert_xai.eval.teacher_student import compute_teacher_student_analysis
+from src.eval.teacher_student import compute_teacher_student_analysis
 
 
 def test_compute_teacher_student_analysis_counts_and_rates():

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-from tinybert_xai.distill.conditions import all_conditions
+from src.distill.conditions import all_conditions
 
 FIGURE_DPI = 180
 CONDITION_ORDER = [condition.name for condition in all_conditions()]

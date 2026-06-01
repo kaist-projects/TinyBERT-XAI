@@ -27,7 +27,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from _config_cli import add_config_flag, add_dataset_override, resolve_run_spec  # noqa: E402
 
-from tinybert_xai import (  # noqa: E402
+from src import (  # noqa: E402
     configure_reproducibility,
     dataset_by_name,
     evaluate_saved_teacher,

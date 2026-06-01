@@ -9,7 +9,7 @@ from typing import Any
 
 import torch
 
-from tinybert_xai.utils import move_batch_to_device
+from src.utils import move_batch_to_device
 
 LOSS_COMPONENTS = ("ce", "logit", "hidden", "attention")
 

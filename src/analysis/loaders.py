@@ -8,8 +8,8 @@ from typing import Any
 
 import pandas as pd
 
-from tinybert_xai.distill.conditions import ConditionSpec, all_conditions
-from tinybert_xai.storage.checkpoints import METADATA_ROOT
+from src.distill.conditions import ConditionSpec, all_conditions
+from src.storage.checkpoints import METADATA_ROOT
 METRIC_COLUMNS = (
     "test_macro_f1",
     "test_micro_f1",

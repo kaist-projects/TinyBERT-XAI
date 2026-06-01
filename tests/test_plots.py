@@ -1,7 +1,7 @@
 import pandas as pd
 
-from tinybert_xai.distill.conditions import all_conditions
-from tinybert_xai.analysis.plots import _metric_ylim, plot_condition_bars
+from src.distill.conditions import all_conditions
+from src.analysis.plots import _metric_ylim, plot_condition_bars
 
 
 def test_metric_ylim_includes_low_scoring_dataset_values():

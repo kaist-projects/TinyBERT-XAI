@@ -1,4 +1,4 @@
-from tinybert_xai.storage.checkpoints import (
+from src.storage.checkpoints import (
     analysis_dir,
     cross_dataset_dir,
     load_state_dict,
@@ -7,14 +7,14 @@ from tinybert_xai.storage.checkpoints import (
     student_dir,
     teacher_dir,
 )
-from tinybert_xai.config import Config
-from tinybert_xai.runspec import RunSpec, load_run_spec, run_spec_from_mapping
-from tinybert_xai.distill.conditions import (
+from src.config import Config
+from src.runspec import RunSpec, load_run_spec, run_spec_from_mapping
+from src.distill.conditions import (
     ConditionSpec,
     all_conditions,
     condition_from_flags,
 )
-from tinybert_xai.data.datasets import (
+from src.data.datasets import (
     ALL_DATASETS,
     DATASET_ANLI,
     DATASET_DAVIDSON,
@@ -33,25 +33,25 @@ from tinybert_xai.data.datasets import (
     load_split,
     source_fingerprint,
 )
-from tinybert_xai.pipeline.earlystop import EarlyStopper
-from tinybert_xai.eval import (
+from src.pipeline.earlystop import EarlyStopper
+from src.eval import (
     EvaluationResult,
     TeacherStudentAnalysis,
     collect_probabilities,
     compute_teacher_student_analysis,
     evaluate,
 )
-from tinybert_xai.distill.losses import attention_kd_loss, compute_student_losses, hidden_kd_loss, logit_kd_loss
-from tinybert_xai.modeling.models import load_tokenizer, load_classifier
-from tinybert_xai.modeling.projections import HiddenProjection
-from tinybert_xai.storage.runlog import (
+from src.distill.losses import attention_kd_loss, compute_student_losses, hidden_kd_loss, logit_kd_loss
+from src.modeling.models import load_tokenizer, load_classifier
+from src.modeling.projections import HiddenProjection
+from src.storage.runlog import (
     RunMetadata,
     TrainEpochEntry,
     collect_hardware,
     make_run_id,
     write_run_metadata,
 )
-from tinybert_xai.pipeline.teacher import (
+from src.pipeline.teacher import (
     TeacherData,
     TeacherEvaluationResult,
     TeacherEpochStats,
@@ -70,7 +70,7 @@ from tinybert_xai.pipeline.teacher import (
     start_teacher_metadata,
     train_teacher_epoch,
 )
-from tinybert_xai.pipeline.student import (
+from src.pipeline.student import (
     StudentData,
     StudentEpochStats,
     StudentEvaluationResult,
@@ -86,7 +86,7 @@ from tinybert_xai.pipeline.student import (
     start_student_metadata,
     train_student_epoch,
 )
-from tinybert_xai.utils import (
+from src.utils import (
     clone_state_dict_cpu,
     count_params,
     move_batch_to_device,

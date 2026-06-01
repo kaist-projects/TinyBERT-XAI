@@ -4,16 +4,16 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from tinybert_xai import condition_from_flags
-from tinybert_xai.config import Config
-from tinybert_xai.distill.losses import (
+from src import condition_from_flags
+from src.config import Config
+from src.distill.losses import (
     LossWeights,
     attention_kd_loss,
     compute_student_losses,
     hidden_kd_loss,
     logit_kd_loss,
 )
-from tinybert_xai.modeling.projections import HiddenProjection
+from src.modeling.projections import HiddenProjection
 
 
 def test_logit_kd_loss_identical_logits_is_zero():

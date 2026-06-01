@@ -7,7 +7,7 @@ from pathlib import Path
 
 import torch
 
-from tinybert_xai.utils import clone_state_dict_cpu
+from src.utils import clone_state_dict_cpu
 
 
 # All generated artifacts live under a single dataset-first results/ root:

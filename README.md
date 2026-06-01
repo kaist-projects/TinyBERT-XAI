@@ -189,7 +189,7 @@ The written interpretation (RQ1/RQ2 answers) lives in
 ## 4. Project Structure
 
 ```text
-tinybert_xai/
+src/
   analysis/       Factorial loaders, effect math, tables, plots,
                   cross-dataset roll-ups, and representation (CKA/attention) analysis
   eval/           Metrics and teacher-student analysis
@@ -242,7 +242,7 @@ results/          Run metadata and analysis outputs
   multi-dataset runs.
 - `reference/` contains the original TinyBERT authors' older codebase for
   comparison. The active implementation is the modern HuggingFace/PyTorch code
-  under `tinybert_xai/`.
+  under `src/`.
 
 ## 7. Acknowledgements
 

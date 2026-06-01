@@ -30,8 +30,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from _config_cli import add_config_flag, add_dataset_override, resolve_run_spec  # noqa: E402
 from _student_cli import condition_to_flags  # noqa: E402
 
-from tinybert_xai import ConditionSpec, all_conditions  # noqa: E402
-from tinybert_xai.storage.checkpoints import metadata_dir, student_dir, teacher_dir  # noqa: E402
+from src import ConditionSpec, all_conditions  # noqa: E402
+from src.storage.checkpoints import metadata_dir, student_dir, teacher_dir  # noqa: E402
 
 SCRIPTS_DIR = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = SCRIPTS_DIR.parent

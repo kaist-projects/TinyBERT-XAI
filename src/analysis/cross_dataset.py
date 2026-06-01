@@ -1,7 +1,7 @@
 """Cross-dataset roll-ups over every completed student factorial sweep.
 
 These functions consume the tidy frame produced by
-:func:`tinybert_xai.analysis.loaders.load_all_runs` (one row per
+:func:`src.analysis.loaders.load_all_runs` (one row per
 ``(dataset, condition)``) and reshape it into the per-(dataset, condition)
 tables and dataset x condition matrices the iteration-8 artifacts need. They are
 pure pandas; no checkpoints or GPU are touched here.
@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from tinybert_xai.analysis.factorial import effects_table
-from tinybert_xai.distill.conditions import all_conditions
+from src.analysis.factorial import effects_table
+from src.distill.conditions import all_conditions
 
 #: Baseline condition that every ``delta`` is measured against.
 DELTA_BASELINE = "ce_only"

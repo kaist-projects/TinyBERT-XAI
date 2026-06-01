@@ -9,7 +9,7 @@ import numpy as np
 import sklearn.metrics as skm
 import torch
 
-from tinybert_xai.utils import move_batch_to_device
+from src.utils import move_batch_to_device
 
 if TYPE_CHECKING:
     from torch.utils.data import DataLoader

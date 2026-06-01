@@ -17,7 +17,7 @@ from pathlib import Path
 
 import yaml
 
-from tinybert_xai.config import Config
+from src.config import Config
 
 DEFAULT_DATASET = "tweet_eval-sentiment"
 _SIGNALS = ("logit", "hidden", "attention")

@@ -1,14 +1,14 @@
 import json
 from pathlib import Path
 
-from tinybert_xai.storage.checkpoints import (
+from src.storage.checkpoints import (
     analysis_dir,
     cross_dataset_dir,
     metadata_dir,
     student_dir,
     teacher_dir,
 )
-from tinybert_xai.analysis.loaders import load_all_runs, load_runs, load_teacher
+from src.analysis.loaders import load_all_runs, load_runs, load_teacher
 
 
 def test_path_helpers_are_dataset_first():

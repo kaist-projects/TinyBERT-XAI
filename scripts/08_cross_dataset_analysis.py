@@ -26,16 +26,16 @@ import pandas as pd
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-from tinybert_xai.analysis.cross_dataset import (  # noqa: E402
+from src.analysis.cross_dataset import (  # noqa: E402
     aggregate_calibration,
     aggregate_main_effects,
     aggregate_teacher_student,
     cross_task_matrix,
     delta_matrix,
 )
-from tinybert_xai import cross_dataset_dir  # noqa: E402
-from tinybert_xai.analysis.loaders import load_all_runs  # noqa: E402
-from tinybert_xai.analysis.plots import (  # noqa: E402
+from src import cross_dataset_dir  # noqa: E402
+from src.analysis.loaders import load_all_runs  # noqa: E402
+from src.analysis.plots import (  # noqa: E402
     plot_confusion_matrix,
     plot_cross_task_heatmap,
 )

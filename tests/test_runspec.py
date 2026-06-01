@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from tinybert_xai import Config, RunSpec, load_run_spec, run_spec_from_mapping
+from src import Config, RunSpec, load_run_spec, run_spec_from_mapping
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 

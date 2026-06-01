@@ -7,7 +7,7 @@ value. Boolean flags use ``BooleanOptionalAction`` (``--eval/--no-eval``,
 ``--logit/--no-logit``, ...) so the CLI can both set and unset a YAML baseline.
 
 Imported by the teacher/student train + eval scripts, which insert the repo root
-onto sys.path first, so ``from tinybert_xai import ...`` resolves.
+onto sys.path first, so ``from src import ...`` resolves.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import argparse
 from dataclasses import replace
 from pathlib import Path
 
-from tinybert_xai import ALL_DATASETS, RunSpec, load_run_spec
+from src import ALL_DATASETS, RunSpec, load_run_spec
 
 _UNSET = object()
 _SIGNALS = ("logit", "hidden", "attention")

@@ -2,14 +2,14 @@
 
 Imported by scripts/01_train_teacher.py, 02_train_student.py, and
 02b_eval_student.py, all of which insert the repo root onto sys.path before
-importing this module, so the ``from tinybert_xai import ...`` below resolves.
+importing this module, so the ``from src import ...`` below resolves.
 """
 
 from __future__ import annotations
 
 import argparse
 
-from tinybert_xai import ALL_DATASETS, DatasetSpec, dataset_by_name
+from src import ALL_DATASETS, DatasetSpec, dataset_by_name
 
 
 def add_dataset_flag(parser: argparse.ArgumentParser, default: str = "tweet_eval-sentiment") -> None:

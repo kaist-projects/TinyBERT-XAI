@@ -39,7 +39,7 @@ from _config_cli import (  # noqa: E402
     resolve_run_spec,
 )
 
-from tinybert_xai import (  # noqa: E402
+from src import (  # noqa: E402
     condition_from_flags,
     configure_reproducibility,
     dataset_by_name,

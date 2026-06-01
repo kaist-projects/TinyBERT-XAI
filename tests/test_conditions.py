@@ -1,4 +1,4 @@
-from tinybert_xai.distill.conditions import all_conditions, condition_from_flags
+from src.distill.conditions import all_conditions, condition_from_flags
 
 CANONICAL_NAMES = [
     "ce_only",
