@@ -25,9 +25,9 @@ _SIGNALS = ("logit", "hidden", "attention")
 # Allowed YAML keys per section. Maps each config-facing key to its flat Config
 # field; run/distillation handled separately. Unknown keys anywhere -> ValueError.
 _MODEL_KEYS = {
-    "teacher_checkpoint": "teacher_checkpoint",
-    "student_checkpoint": "student_checkpoint",
-    "tokenizer_checkpoint": "tokenizer_checkpoint",
+    "teacher": "teacher_checkpoint",
+    "student": "student_checkpoint",
+    "tokenizer": "tokenizer_checkpoint",
 }
 _TRAINING_KEYS = {
     "seed": "seed",
@@ -41,7 +41,7 @@ _TRAINING_KEYS = {
     "patience": "patience",
 }
 _LOSS_WEIGHT_KEYS = {"ce": "ce_weight", "logit": "logit_weight", "hidden": "hidden_weight", "attn": "attn_weight"}
-_RUN_KEYS = {"dataset", "condition", "eval"}
+_RUN_KEYS = {"dataset", "conditions", "eval"}
 _DISTILL_KEYS = {"logit_temperature", "loss_weights"}
 _TOP_KEYS = {"run", "model", "training", "distillation"}
 
@@ -72,7 +72,7 @@ def run_spec_from_mapping(mapping: dict) -> RunSpec:
     distillation = _section(mapping, "distillation", _DISTILL_KEYS)
 
     config = Config(**_config_kwargs(mapping, distillation))
-    logit, hidden, attention = _condition_flags(run.get("condition", []))
+    logit, hidden, attention = _condition_flags(run.get("conditions", {}))
     return RunSpec(
         config=config,
         dataset=run.get("dataset", DEFAULT_DATASET),
@@ -105,13 +105,11 @@ def _config_kwargs(mapping: dict, distillation: dict) -> dict:
     return kwargs
 
 
-def _condition_flags(condition: list) -> tuple[bool, bool, bool]:
-    if not isinstance(condition, list):
-        raise ValueError(f"run.condition must be a list of signals, got {type(condition).__name__}")
-    unknown = set(condition) - set(_SIGNALS)
-    if unknown:
-        raise ValueError(f"Unknown condition signal(s): {sorted(unknown)}; allowed: {list(_SIGNALS)}")
-    return tuple(signal in condition for signal in _SIGNALS)  # type: ignore[return-value]
+def _condition_flags(conditions: dict) -> tuple[bool, bool, bool]:
+    if not isinstance(conditions, dict):
+        raise ValueError(f"run.conditions must be a mapping of signal->bool, got {type(conditions).__name__}")
+    _reject_unknown_keys("run.conditions", conditions, set(_SIGNALS))
+    return tuple(bool(conditions.get(signal, False)) for signal in _SIGNALS)  # type: ignore[return-value]
 
 
 def _section(mapping: dict, name: str, allowed: set[str]) -> dict:

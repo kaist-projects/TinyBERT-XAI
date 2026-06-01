@@ -9,23 +9,28 @@
 
 run:
   dataset: tweet_eval-sentiment
-  condition: []            # subset of [logit, hidden, attention]; [] -> ce_only
+  conditions:              # which KD signals are active; all false -> ce_only
+    logit: false
+    hidden: false
+    attention: false
   eval: false
 
 model:
-  teacher_checkpoint: bert-base-uncased
-  student_checkpoint: huawei-noah/TinyBERT_General_4L_312D
-  tokenizer_checkpoint: bert-base-uncased
+  teacher: bert-base-uncased
+  student: huawei-noah/TinyBERT_General_4L_312D
+  tokenizer: bert-base-uncased
 
 training:
   seed: 42
   device: null             # null -> auto (cuda if available, else cpu)
   precision: bf16
   max_seq_length: 128
-  learning_rate: 2.0e-5
+  learning_rate: 0.00002   # 2e-5
   train_batch_size: 16
   eval_batch_size: 32
   num_epochs: 3
+  # patience: epochs to keep training with no dev_macro_f1 improvement before
+  # early stopping kicks in (the best-so-far checkpoint is kept).
   patience: 2
 
 distillation:

@@ -8,5 +8,8 @@
 
 run:
   dataset: imdb
-  condition: [logit, hidden, attention]
+  conditions:
+    logit: true
+    hidden: true
+    attention: true
   eval: true

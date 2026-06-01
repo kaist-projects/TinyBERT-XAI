@@ -19,8 +19,8 @@ def test_empty_mapping_reproduces_locked_defaults():
 def test_full_mapping_maps_every_field():
     spec = run_spec_from_mapping(
         {
-            "run": {"dataset": "imdb", "condition": ["logit", "attention"], "eval": True},
-            "model": {"teacher_checkpoint": "bert-x", "student_checkpoint": "tiny-y", "tokenizer_checkpoint": "tok-z"},
+            "run": {"dataset": "imdb", "conditions": {"logit": True, "attention": True}, "eval": True},
+            "model": {"teacher": "bert-x", "student": "tiny-y", "tokenizer": "tok-z"},
             "training": {
                 "seed": 7,
                 "device": "cpu",
@@ -72,7 +72,7 @@ def test_unknown_key_raises(mapping):
 
 def test_unknown_condition_signal_raises():
     with pytest.raises(ValueError):
-        run_spec_from_mapping({"run": {"condition": ["logit", "bogus"]}})
+        run_spec_from_mapping({"run": {"conditions": {"logit": True, "bogus": True}}})
 
 
 def test_default_yaml_equals_locked_config():
