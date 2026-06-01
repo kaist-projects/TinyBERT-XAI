@@ -14,7 +14,7 @@ Usage
 
 Writes
 ------
-    results/teachers/<dataset>/run_metadata.json  (patched in-place)
+    results/metadata/<dataset>/teacher/run_metadata.json  (patched in-place)
 """
 
 from __future__ import annotations

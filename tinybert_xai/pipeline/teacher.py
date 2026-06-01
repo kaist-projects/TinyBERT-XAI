@@ -16,7 +16,7 @@ import torch
 from tqdm.auto import tqdm
 from transformers import set_seed as hf_set_seed
 
-from tinybert_xai.storage.checkpoints import load_state_dict, results_dir, save_state_dict, teacher_dir, validate_run_artifacts
+from tinybert_xai.storage.checkpoints import load_state_dict, metadata_dir, save_state_dict, teacher_dir, validate_run_artifacts
 from tinybert_xai.data.datasets import build_loader, source_fingerprint
 from tinybert_xai.pipeline.earlystop import EarlyStopper
 from tinybert_xai.eval import EvaluationResult, evaluate
@@ -307,7 +307,7 @@ def save_teacher_training_result(
         "history": result.history,
     }
 
-    metadata_path = results_dir("teacher", spec.name) / "run_metadata.json"
+    metadata_path = metadata_dir(spec.name, "teacher") / "run_metadata.json"
     write_run_metadata(meta, metadata_path)
     return best_ckpt_path, metadata_path
 
@@ -319,7 +319,7 @@ def evaluate_saved_teacher(
     device: str,
 ) -> TeacherEvaluationResult:
     ckpt_path = teacher_dir(spec.name) / "best.pt"
-    metadata_path = results_dir("teacher", spec.name) / "run_metadata.json"
+    metadata_path = metadata_dir(spec.name, "teacher") / "run_metadata.json"
     _require_teacher_artifacts(ckpt_path, metadata_path)
 
     tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)

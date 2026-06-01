@@ -9,8 +9,7 @@ from typing import Any
 import pandas as pd
 
 from tinybert_xai.distill.conditions import ConditionSpec, all_conditions
-
-RESULTS_ROOT = Path("results")
+from tinybert_xai.storage.checkpoints import METADATA_ROOT
 METRIC_COLUMNS = (
     "test_macro_f1",
     "test_micro_f1",
@@ -31,16 +30,16 @@ METRIC_COLUMNS = (
 )
 
 
-def load_runs(dataset_name: str, results_root: Path | str = RESULTS_ROOT) -> pd.DataFrame:
+def load_runs(dataset_name: str, metadata_root: Path | str = METADATA_ROOT) -> pd.DataFrame:
     """Load one tidy row per student condition for a dataset.
 
     Missing or corrupt run metadata is represented as ``valid=False`` with
     numeric fields left as ``NaN`` so the validity gate can report all issues.
     """
-    root = Path(results_root)
+    root = Path(metadata_root)
     rows = []
     for condition in all_conditions():
-        metadata_path = root / "students" / dataset_name / condition.name / "run_metadata.json"
+        metadata_path = root / dataset_name / "student" / condition.name / "run_metadata.json"
         try:
             with open(metadata_path) as f:
                 payload = json.load(f)
@@ -50,18 +49,19 @@ def load_runs(dataset_name: str, results_root: Path | str = RESULTS_ROOT) -> pd.
     return pd.DataFrame(rows)
 
 
-def load_all_runs(results_root: Path | str = RESULTS_ROOT) -> pd.DataFrame:
-    """Load every student dataset directory currently present under results."""
-    students_root = Path(results_root) / "students"
-    if not students_root.exists():
+def load_all_runs(metadata_root: Path | str = METADATA_ROOT) -> pd.DataFrame:
+    """Load every dataset that has student metadata under the metadata root."""
+    root = Path(metadata_root)
+    if not root.exists():
         return pd.DataFrame()
-    frames = [load_runs(path.name, results_root) for path in sorted(students_root.iterdir()) if path.is_dir()]
+    datasets = [p.name for p in sorted(root.iterdir()) if (p / "student").is_dir()]
+    frames = [load_runs(name, metadata_root) for name in datasets]
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
-def load_teacher(dataset_name: str, results_root: Path | str = RESULTS_ROOT) -> pd.Series:
+def load_teacher(dataset_name: str, metadata_root: Path | str = METADATA_ROOT) -> pd.Series:
     """Load the teacher reference row for a dataset."""
-    metadata_path = Path(results_root) / "teachers" / dataset_name / "run_metadata.json"
+    metadata_path = Path(metadata_root) / dataset_name / "teacher" / "run_metadata.json"
     with open(metadata_path) as f:
         payload = json.load(f)
     test = payload.get("metrics", {}).get("test", {})

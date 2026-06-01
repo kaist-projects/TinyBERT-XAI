@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import torch
 from tqdm.auto import tqdm
 
-from tinybert_xai.storage.checkpoints import load_state_dict, results_dir, save_state_dict, student_dir, validate_run_artifacts
+from tinybert_xai.storage.checkpoints import load_state_dict, metadata_dir, save_state_dict, student_dir, validate_run_artifacts
 from tinybert_xai.distill.conditions import ConditionSpec
 from tinybert_xai.data.datasets import build_loader, source_fingerprint
 from tinybert_xai.pipeline.earlystop import EarlyStopper
@@ -340,7 +340,7 @@ def save_student_training_result(
         "history": result.history,
     }
 
-    metadata_path = results_dir("student", spec.name, cond.name) / "run_metadata.json"
+    metadata_path = metadata_dir(spec.name, "student", cond.name) / "run_metadata.json"
     write_run_metadata(meta, metadata_path)
     return best_ckpt_path, metadata_path
 
@@ -354,7 +354,7 @@ def evaluate_saved_student(
     teacher_model: "PreTrainedModel | None" = None,
 ) -> StudentEvaluationResult:
     ckpt_path = student_dir(spec.name, cond.name) / "best.pt"
-    metadata_path = results_dir("student", spec.name, cond.name) / "run_metadata.json"
+    metadata_path = metadata_dir(spec.name, "student", cond.name) / "run_metadata.json"
     _require_student_artifacts(ckpt_path, metadata_path, cond)
 
     tokenizer = load_tokenizer(cfg.tokenizer_checkpoint)

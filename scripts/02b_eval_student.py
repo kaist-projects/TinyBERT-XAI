@@ -14,7 +14,7 @@ Usage
 
 Writes
 ------
-    results/students/tweet_eval-sentiment/<condition>/run_metadata.json
+    results/metadata/tweet_eval-sentiment/student/<condition>/run_metadata.json
 """
 
 from __future__ import annotations

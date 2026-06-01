@@ -13,9 +13,9 @@ Usage
 
 Output
 ------
-    checkpoints/students/tweet_eval-sentiment/<condition>/
+    results/checkpoints/tweet_eval-sentiment/student/<condition>/
         epoch_0.pt, epoch_1.pt, ..., best.pt
-    results/students/tweet_eval-sentiment/<condition>/
+    results/metadata/tweet_eval-sentiment/student/<condition>/
         run_metadata.json
 
 With --eval, the run_metadata.json is patched with dev/test metrics in the same

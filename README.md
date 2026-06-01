@@ -93,8 +93,8 @@ python scripts/01_train_teacher.py --dataset tweet_eval-sentiment --eval
 
 Expected artifacts:
 
-- `checkpoints/teachers/tweet_eval-sentiment/best.pt`
-- `results/teachers/tweet_eval-sentiment/run_metadata.json`
+- `results/checkpoints/tweet_eval-sentiment/teacher/best.pt`
+- `results/metadata/tweet_eval-sentiment/teacher/run_metadata.json`
 
 ### 3.3. Student Distillation
 
@@ -126,8 +126,8 @@ python scripts/02_train_student.py --logit --hidden --logit-weight 0.5 --hidden-
 
 Expected artifacts:
 
-- `checkpoints/students/<dataset>/<condition>/best.pt`
-- `results/students/<dataset>/<condition>/run_metadata.json`
+- `results/checkpoints/<dataset>/student/<condition>/best.pt`
+- `results/metadata/<dataset>/student/<condition>/run_metadata.json`
 
 ### 3.4. Full Factorial Sweep
 
@@ -161,7 +161,7 @@ presentation assets. This runs in two stages, written under
 `results/analysis/cross_dataset/`.
 
 **Stage 1, metadata only (no GPU).** Reads every
-`results/students/<dataset>/<condition>/run_metadata.json` that is present:
+`results/metadata/<dataset>/student/<condition>/run_metadata.json` that is present:
 
 ```bash
 python scripts/08_cross_dataset_analysis.py

@@ -45,7 +45,7 @@ def test_schema_v2_rounding_and_teacher_fields(tmp_path):
             "patience": 2,
             "best_epoch": 1,
             "early_stopped": False,
-            "checkpoint": "checkpoints/teachers/tweet_eval-sentiment/best.pt",
+            "checkpoint": "results/checkpoints/tweet_eval-sentiment/teacher/best.pt",
         },
         reproducibility={
             "seed": 42,
@@ -166,7 +166,7 @@ def test_student_schema_v2_uses_condition_and_active_losses(tmp_path):
             "patience": 2,
             "best_epoch": 1,
             "early_stopped": False,
-            "checkpoint": "checkpoints/students/tweet_eval-sentiment/ce_only/best.pt",
+            "checkpoint": "results/checkpoints/tweet_eval-sentiment/student/ce_only/best.pt",
         },
         reproducibility={
             "seed": 42,

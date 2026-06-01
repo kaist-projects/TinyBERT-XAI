@@ -10,17 +10,36 @@ import torch
 from tinybert_xai.utils import clone_state_dict_cpu
 
 
+# All generated artifacts live under a single dataset-first results/ root:
+#   results/checkpoints/<dataset>/{teacher,student/<condition>}/...
+#   results/metadata/<dataset>/{teacher,student/<condition>}/run_metadata.json
+#   results/analysis/<dataset>/... and results/analysis/cross_dataset/...
+RESULTS_ROOT = Path("results")
+CHECKPOINTS_ROOT = RESULTS_ROOT / "checkpoints"
+METADATA_ROOT = RESULTS_ROOT / "metadata"
+ANALYSIS_ROOT = RESULTS_ROOT / "analysis"
+
+
 def teacher_dir(dataset_name: str) -> Path:
-    return Path("checkpoints") / "teachers" / dataset_name
+    return CHECKPOINTS_ROOT / dataset_name / "teacher"
 
 
 def student_dir(dataset_name: str, condition: str) -> Path:
-    return Path("checkpoints") / "students" / dataset_name / condition
+    return CHECKPOINTS_ROOT / dataset_name / "student" / condition
 
 
-def results_dir(stage: str, dataset_name: str, condition: str | None = None) -> Path:
-    base = Path("results") / f"{stage}s" / dataset_name
+def metadata_dir(dataset_name: str, stage: str, condition: str | None = None) -> Path:
+    """Metadata directory for a run. ``stage`` is ``"teacher"`` or ``"student"``."""
+    base = METADATA_ROOT / dataset_name / stage
     return base / condition if condition is not None else base
+
+
+def analysis_dir(dataset_name: str) -> Path:
+    return ANALYSIS_ROOT / dataset_name
+
+
+def cross_dataset_dir() -> Path:
+    return ANALYSIS_ROOT / "cross_dataset"
 
 
 def save_state_dict(model: torch.nn.Module, path: Path) -> None:

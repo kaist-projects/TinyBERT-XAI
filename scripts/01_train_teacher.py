@@ -2,7 +2,7 @@
 
 Iteration 1 deliverable.  Trains bert-base-uncased on TweetEval-sentiment,
 applies early stopping on dev macro-F1 (patience=2), saves one checkpoint per
-epoch plus best.pt, and writes results/teachers/tweet_eval-sentiment/run_metadata.json.
+epoch plus best.pt, and writes results/metadata/tweet_eval-sentiment/teacher/run_metadata.json.
 
 Usage
 -----
@@ -13,9 +13,9 @@ Usage
 
 Output
 ------
-    checkpoints/teachers/<dataset>/
+    results/checkpoints/<dataset>/teacher/
         epoch_0.pt, epoch_1.pt, ..., best.pt
-    results/teachers/<dataset>/
+    results/metadata/<dataset>/teacher/
         run_metadata.json
 
 With --eval, the run_metadata.json is patched with dev/test metrics in the same

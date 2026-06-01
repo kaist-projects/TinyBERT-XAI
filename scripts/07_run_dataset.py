@@ -31,7 +31,7 @@ from _config_cli import add_config_flag, add_dataset_override, resolve_run_spec 
 from _student_cli import condition_to_flags  # noqa: E402
 
 from tinybert_xai import ConditionSpec, all_conditions  # noqa: E402
-from tinybert_xai.storage.checkpoints import results_dir, student_dir, teacher_dir  # noqa: E402
+from tinybert_xai.storage.checkpoints import metadata_dir, student_dir, teacher_dir  # noqa: E402
 
 SCRIPTS_DIR = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = SCRIPTS_DIR.parent
@@ -101,7 +101,7 @@ def teacher_done(dataset_name: str) -> bool:
 
 def condition_done(dataset_name: str, cond: ConditionSpec) -> bool:
     best_ckpt = REPO_ROOT / student_dir(dataset_name, cond.name) / "best.pt"
-    metadata = REPO_ROOT / results_dir("student", dataset_name, cond.name) / "run_metadata.json"
+    metadata = REPO_ROOT / metadata_dir(dataset_name, "student", cond.name) / "run_metadata.json"
     return best_ckpt.exists() and _has_test_metrics(metadata)
 
 

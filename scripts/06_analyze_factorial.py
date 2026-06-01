@@ -18,7 +18,7 @@ from tinybert_xai.analysis.plots import write_all_figures  # noqa: E402
 from tinybert_xai.analysis.tables import (  # noqa: E402
     render_factorial_report,
 )
-from tinybert_xai import ALL_DATASETS  # noqa: E402
+from tinybert_xai import ALL_DATASETS, analysis_dir  # noqa: E402
 from tinybert_xai.distill.conditions import all_conditions  # noqa: E402
 
 METRIC_COLUMNS = [
@@ -73,7 +73,7 @@ def main() -> None:
 
 
 def analysis_paths(dataset: str) -> tuple[pathlib.Path, pathlib.Path, pathlib.Path]:
-    base = pathlib.Path("results") / "analysis" / dataset
+    base = analysis_dir(dataset)
     return base, base / "figures", base / "REPORT.md"
 
 

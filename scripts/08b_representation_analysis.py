@@ -14,7 +14,7 @@ fixed test sample to produce the artifacts that are not in ``run_metadata.json``
   teacher-vs-student size/latency comparison (architecture is fixed across
   conditions).
 
-Needs the conda env ``tinybert-xai`` (torch) and the ``checkpoints/`` tree.
+Needs the conda env ``tinybert-xai`` (torch) and the ``results/checkpoints/`` tree.
 
 Usage
 -----
@@ -63,11 +63,16 @@ from tinybert_xai.analysis.representations import (  # noqa: E402
     measure_efficiency,
     select_example_indices,
 )
-from tinybert_xai.storage.checkpoints import load_state_dict, student_dir, teacher_dir  # noqa: E402
+from tinybert_xai.storage.checkpoints import (  # noqa: E402
+    CHECKPOINTS_ROOT,
+    cross_dataset_dir,
+    load_state_dict,
+    student_dir,
+    teacher_dir,
+)
 from tinybert_xai.distill.conditions import all_conditions  # noqa: E402
 
-ANALYSIS_ROOT = pathlib.Path("results") / "analysis" / "cross_dataset"
-RESULTS_ROOT = pathlib.Path("results")
+ANALYSIS_ROOT = cross_dataset_dir()
 HEATMAP_CONDITIONS = ("ce_only", "kd_full")
 TEACHER_HEATMAP_LAYER = 12
 STUDENT_HEATMAP_LAYER = 4
@@ -165,9 +170,10 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _datasets_to_analyze() -> list[str]:
-    students_root = RESULTS_ROOT / "students"
+    if not CHECKPOINTS_ROOT.exists():
+        return []
     datasets = []
-    for path in sorted(students_root.iterdir()):
+    for path in sorted(CHECKPOINTS_ROOT.iterdir()):
         if path.is_dir() and (teacher_dir(path.name) / "best.pt").exists():
             datasets.append(path.name)
     return datasets

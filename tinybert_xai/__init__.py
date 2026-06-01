@@ -1,6 +1,8 @@
 from tinybert_xai.storage.checkpoints import (
+    analysis_dir,
+    cross_dataset_dir,
     load_state_dict,
-    results_dir,
+    metadata_dir,
     save_state_dict,
     student_dir,
     teacher_dir,
@@ -174,10 +176,12 @@ __all__ = [
     "save_student_training_result",
     "start_student_metadata",
     "train_student_epoch",
-    # checkpoints
+    # checkpoints / paths
     "teacher_dir",
     "student_dir",
-    "results_dir",
+    "metadata_dir",
+    "analysis_dir",
+    "cross_dataset_dir",
     "save_state_dict",
     "load_state_dict",
     # earlystop
