@@ -60,14 +60,7 @@ Train the BERT teacher (`--dataset` selects a registered dataset; default
 `tweet_eval-sentiment`, also `imdb`, `anli`):
 
 ```bash
-python scripts/01_train_teacher.py --dataset tweet_eval-sentiment
-```
-
-Evaluate the saved teacher on dev/test and patch its metadata (or pass `--eval`
-to `01_train_teacher.py` to chain evaluation onto training in one pass):
-
-```bash
-python scripts/01b_eval_teacher.py --dataset tweet_eval-sentiment
+python scripts/01_train_teacher.py --dataset tweet_eval-sentiment --eval
 ```
 
 Expected artifacts:
@@ -82,16 +75,11 @@ Train one student condition by toggling distillation signals with flags
 `--dataset` selects the dataset (same choices as the teacher):
 
 ```bash
-python scripts/02_train_student.py --dataset tweet_eval-sentiment --logit
+python scripts/02_train_student.py --dataset tweet_eval-sentiment --logit --eval
 ```
 
 Pass `--eval` to chain evaluation onto training in one pass, patching the run's
-metadata with dev/test metrics (equivalent to running `02b_eval_student.py`
-afterwards):
-
-```bash
-python scripts/02_train_student.py --logit --eval
-```
+metadata with dev/test metrics.
 
 Combine flags for any of the 8 conditions in the experimental conditions table
 below. For example, `--logit --attention` is `kd_logit_attn`, `--logit --hidden
