@@ -86,9 +86,12 @@ artifacts:
 
 ### 3.3. Student Distillation
 
-Describe a student run in a YAML config and pass it with `--config`. `configs/default.yaml` is the standard setup.
+Describe a student run in a YAML config. The scripts read `config.yaml` in the
+repo root by default; pass `--config <file>` to use a different one (e.g. the
+worked example `configs/kd_full.yaml`).
 
 ```bash
+python scripts/02_train_student.py                          # uses ./config.yaml
 python scripts/02_train_student.py --config configs/kd_full.yaml
 ```
 

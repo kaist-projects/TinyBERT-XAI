@@ -77,7 +77,7 @@ def test_unknown_condition_signal_raises():
 
 
 def test_default_yaml_equals_locked_config():
-    spec = load_run_spec(REPO_ROOT / "configs" / "default.yaml")
+    spec = load_run_spec(REPO_ROOT / "config.yaml")
 
     assert spec.config == Config()  # committed recipe must match the locked defaults
 

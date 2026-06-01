@@ -7,8 +7,9 @@ evaluation is not a config option. ``load_run_spec`` reads a YAML file into a
 ``RunSpec``; omitted keys fall back to ``Config()`` / run defaults, and unknown
 keys raise ``ValueError`` to catch typos.
 
-The committed ``configs/default.yaml`` reproduces the design-doc-locked recipe,
-so an empty/absent config is byte-for-byte the historical CLI default.
+The committed root ``config.yaml`` (loaded by the scripts when no ``--config`` is
+given) reproduces the design-doc-locked recipe, so it matches the built-in
+``RunSpec()`` defaults byte-for-byte.
 """
 
 from __future__ import annotations

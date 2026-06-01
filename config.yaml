@@ -1,10 +1,11 @@
-# Canonical run config — reproduces the design-doc §9 locked recipe.
-# Every value here equals the Config() / run defaults, so loading this file is
-# identical to running with no --config. Treat it as the binding recipe for the
-# 81-run factorial; deviating from these values is off-spec (see CLAUDE.md §9).
+# Default run config — loaded automatically by the training scripts when no
+# --config is given (run from the repo root). Every value here equals the
+# Config() / run defaults and reproduces the design-doc §9 locked recipe; treat
+# it as the binding recipe for the 81-run factorial, and note that deviating
+# from these values is off-spec (see CLAUDE.md §9).
 #
 # Usage:
-#   python scripts/02_train_student.py --config configs/default.yaml --logit
+#   python scripts/02_train_student.py --logit          # uses ./config.yaml
 # CLI flags override any value below. Training always evaluates on dev/test.
 
 run:

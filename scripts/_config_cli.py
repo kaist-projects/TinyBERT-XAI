@@ -20,12 +20,19 @@ from src import ALL_DATASETS, RunSpec, load_run_spec
 
 _UNSET = object()
 _SIGNALS = ("logit", "hidden", "attention")
+# Loaded automatically when --config is not given (run from the repo root).
+DEFAULT_CONFIG = Path("config.yaml")
 # CLI flag attr -> Config field (identical names; argparse maps - to _).
 _CONFIG_OVERRIDES = ("ce_weight", "logit_weight", "hidden_weight", "attn_weight", "logit_temperature")
 
 
 def add_config_flag(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--config", type=Path, default=None, help="YAML run config (CLI flags override it)")
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="YAML run config (CLI flags override it); defaults to ./config.yaml when present",
+    )
 
 
 def add_dataset_override(parser: argparse.ArgumentParser) -> None:
@@ -58,8 +65,13 @@ def add_weight_overrides(parser: argparse.ArgumentParser) -> None:
 
 
 def resolve_run_spec(args: argparse.Namespace) -> RunSpec:
-    """Overlay any explicitly-passed CLI flags onto the YAML/default RunSpec."""
-    base = load_run_spec(args.config) if getattr(args, "config", None) else RunSpec()
+    """Overlay any explicitly-passed CLI flags onto the YAML/default RunSpec.
+
+    Config source precedence: an explicit ``--config`` path, else ``./config.yaml``
+    if it exists, else the built-in ``RunSpec()`` defaults.
+    """
+    config_path = getattr(args, "config", None) or (DEFAULT_CONFIG if DEFAULT_CONFIG.exists() else None)
+    base = load_run_spec(config_path) if config_path else RunSpec()
 
     config = replace(base.config, **_present(args, _CONFIG_OVERRIDES))
     run_overrides = _present(args, ("dataset", *_SIGNALS))
