@@ -45,9 +45,8 @@ pipeline.
 | [VarDial](https://huggingface.co/datasets/statworx/swiss-dialects) | `vardial` | dialect ID | 3,793 / 475 / 475 | seed-42 80/10/10 split |
 
 Local datasets are gitignored: save DynaHate to
-`data/dynahate/dynahate_v0.2.3.csv`, and build Multi-VALUE with
-`scripts/build_multivalue.py`. HatEval requires accepting the Hugging Face terms
-and logging in before use.
+`data/dynahate/dynahate_v0.2.3.csv`. HatEval requires accepting the Hugging Face
+terms and logging in before use.
 
 ## 2. Features
 
@@ -203,7 +202,6 @@ tinybert_xai/
   utils.py        Cross-cutting helpers (device, param counts, autocast)
 
 scripts/
-  00_smoke_test.py
   01_train_teacher.py
   01b_eval_teacher.py
   02_train_student.py

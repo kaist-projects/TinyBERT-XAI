@@ -31,7 +31,6 @@ DATASET_ORDER = [
     "imdb",
     "tweet_eval-sentiment",
     "vardial",
-    "multivalue",
 ]
 
 CALIBRATION_COLUMNS = ["test_ece", "test_nll", "test_brier"]

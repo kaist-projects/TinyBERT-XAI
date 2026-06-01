@@ -8,7 +8,6 @@ from tinybert_xai import (
     DATASET_FEVER,
     DATASET_HATEVAL,
     DATASET_IMDB,
-    DATASET_MULTIVALUE,
     DATASET_TWEETEVAL_SENTIMENT,
     DATASET_VARDIAL,
     LocalCsvSource,
@@ -167,7 +166,7 @@ def test_local_csv_split_filters_by_split_column_and_maps_labels(tmp_path):
     assert test["text"] == ["d"] and test["label"] == [0]
 
 
-@pytest.mark.parametrize("spec", [DATASET_DYNAHATE, DATASET_MULTIVALUE])
+@pytest.mark.parametrize("spec", [DATASET_DYNAHATE])
 def test_local_csv_missing_file_raises_helpful_error(spec):
     with pytest.raises(FileNotFoundError, match="Download it"):
         load_split(spec, "train")
@@ -182,7 +181,6 @@ def test_registry_round_trips_known_datasets():
     assert dataset_by_name("fever") is DATASET_FEVER
     assert dataset_by_name("hateval") is DATASET_HATEVAL
     assert dataset_by_name("vardial") is DATASET_VARDIAL
-    assert dataset_by_name("multivalue") is DATASET_MULTIVALUE
     with pytest.raises(KeyError):
         dataset_by_name("does-not-exist")
 
@@ -201,5 +199,3 @@ def test_spec_input_type_and_split_scheme():
     assert DATASET_HATEVAL.split_scheme == "official"
     assert DATASET_VARDIAL.input_type == "single_text"
     assert DATASET_VARDIAL.split_scheme == "stratified_dev_0.1_test_0.1_seed42"
-    assert DATASET_MULTIVALUE.input_type == "single_text"
-    assert DATASET_MULTIVALUE.split_scheme == "official_csv"
