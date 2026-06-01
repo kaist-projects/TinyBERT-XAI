@@ -87,12 +87,11 @@ artifacts:
 ### 3.3. Student Distillation
 
 Describe a student run in a YAML config. The scripts read `config.yaml` in the
-repo root by default; pass `--config <file>` to use a different one (e.g. the
-worked example `configs/kd_full.yaml`).
+repo root by default; edit it, or pass `--config <file>` to use a different one.
 
 ```bash
-python scripts/02_train_student.py                          # uses ./config.yaml
-python scripts/02_train_student.py --config configs/kd_full.yaml
+python scripts/02_train_student.py                  # uses ./config.yaml
+python scripts/02_train_student.py --config my_run.yaml
 ```
 
 To define a condition, set which teacher signals the student learns from under
