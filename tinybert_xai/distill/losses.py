@@ -136,6 +136,7 @@ def compute_student_losses(
     projections: HiddenProjection | None = None,
     attention_mask: torch.Tensor | None = None,
     weights: LossWeights = LossWeights(),
+    logit_temperature: float = 1.0,
 ) -> tuple[torch.Tensor, dict[str, float]]:
     if cond.uses_teacher and teacher_out is None:
         raise RuntimeError(f"Condition {cond.name!r} requires teacher outputs")
@@ -144,7 +145,7 @@ def compute_student_losses(
 
     losses = {"ce": student_out.loss}
     if cond.logit:
-        losses["logit"] = logit_kd_loss(student_out.logits, teacher_out.logits)
+        losses["logit"] = logit_kd_loss(student_out.logits, teacher_out.logits, T=logit_temperature)
     if cond.hidden:
         if projections is None:
             raise RuntimeError(f"Condition {cond.name!r} requires hidden projections")

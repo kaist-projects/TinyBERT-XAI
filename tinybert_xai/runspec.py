@@ -1,0 +1,128 @@
+"""YAML run specification: one file fully describes a training/eval run.
+
+A ``RunSpec`` bundles the training ``Config`` (hyperparameters) with the
+run-level selections that are not hyperparameters: which dataset, which
+distillation condition, and whether to chain evaluation. ``load_run_spec`` reads
+a YAML file into a ``RunSpec``; omitted keys fall back to ``Config()`` / run
+defaults, and unknown keys raise ``ValueError`` to catch typos.
+
+The committed ``configs/default.yaml`` reproduces the design-doc-locked recipe,
+so an empty/absent config is byte-for-byte the historical CLI default.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import yaml
+
+from tinybert_xai.config import Config
+
+DEFAULT_DATASET = "tweet_eval-sentiment"
+_SIGNALS = ("logit", "hidden", "attention")
+
+# Allowed YAML keys per section. Maps each config-facing key to its flat Config
+# field; run/distillation handled separately. Unknown keys anywhere -> ValueError.
+_MODEL_KEYS = {
+    "teacher_checkpoint": "teacher_checkpoint",
+    "student_checkpoint": "student_checkpoint",
+    "tokenizer_checkpoint": "tokenizer_checkpoint",
+}
+_TRAINING_KEYS = {
+    "seed": "seed",
+    "device": "device",
+    "precision": "precision",
+    "max_seq_length": "max_seq_length",
+    "learning_rate": "learning_rate",
+    "train_batch_size": "train_batch_size",
+    "eval_batch_size": "eval_batch_size",
+    "num_epochs": "num_epochs",
+    "patience": "patience",
+}
+_LOSS_WEIGHT_KEYS = {"ce": "ce_weight", "logit": "logit_weight", "hidden": "hidden_weight", "attn": "attn_weight"}
+_RUN_KEYS = {"dataset", "condition", "eval"}
+_DISTILL_KEYS = {"logit_temperature", "loss_weights"}
+_TOP_KEYS = {"run", "model", "training", "distillation"}
+
+
+@dataclass(frozen=True)
+class RunSpec:
+    config: Config = field(default_factory=Config)
+    dataset: str = DEFAULT_DATASET
+    logit: bool = False
+    hidden: bool = False
+    attention: bool = False
+    eval: bool = False
+
+
+def load_run_spec(path: str | Path) -> RunSpec:
+    """Parse a YAML file into a validated RunSpec."""
+    with open(path) as f:
+        mapping = yaml.safe_load(f) or {}
+    if not isinstance(mapping, dict):
+        raise ValueError(f"Config root must be a mapping, got {type(mapping).__name__}")
+    return run_spec_from_mapping(mapping)
+
+
+def run_spec_from_mapping(mapping: dict) -> RunSpec:
+    """Build a RunSpec from an already-parsed mapping (pure; unit-testable)."""
+    _reject_unknown_keys("(root)", mapping, _TOP_KEYS)
+    run = _section(mapping, "run", _RUN_KEYS)
+    distillation = _section(mapping, "distillation", _DISTILL_KEYS)
+
+    config = Config(**_config_kwargs(mapping, distillation))
+    logit, hidden, attention = _condition_flags(run.get("condition", []))
+    return RunSpec(
+        config=config,
+        dataset=run.get("dataset", DEFAULT_DATASET),
+        logit=logit,
+        hidden=hidden,
+        attention=attention,
+        eval=bool(run.get("eval", False)),
+    )
+
+
+def _config_kwargs(mapping: dict, distillation: dict) -> dict:
+    """Flatten the model/training/distillation sections into Config(**kwargs)."""
+    model = _section(mapping, "model", set(_MODEL_KEYS))
+    training = _section(mapping, "training", set(_TRAINING_KEYS))
+    loss_weights = distillation.get("loss_weights") or {}
+    _reject_unknown_keys("distillation.loss_weights", loss_weights, set(_LOSS_WEIGHT_KEYS))
+
+    kwargs: dict = {}
+    for src, dst in _MODEL_KEYS.items():
+        if src in model:
+            kwargs[dst] = model[src]
+    for src, dst in _TRAINING_KEYS.items():
+        if src in training:
+            kwargs[dst] = training[src]
+    for src, dst in _LOSS_WEIGHT_KEYS.items():
+        if src in loss_weights:
+            kwargs[dst] = loss_weights[src]
+    if "logit_temperature" in distillation:
+        kwargs["logit_temperature"] = distillation["logit_temperature"]
+    return kwargs
+
+
+def _condition_flags(condition: list) -> tuple[bool, bool, bool]:
+    if not isinstance(condition, list):
+        raise ValueError(f"run.condition must be a list of signals, got {type(condition).__name__}")
+    unknown = set(condition) - set(_SIGNALS)
+    if unknown:
+        raise ValueError(f"Unknown condition signal(s): {sorted(unknown)}; allowed: {list(_SIGNALS)}")
+    return tuple(signal in condition for signal in _SIGNALS)  # type: ignore[return-value]
+
+
+def _section(mapping: dict, name: str, allowed: set[str]) -> dict:
+    section = mapping.get(name) or {}
+    if not isinstance(section, dict):
+        raise ValueError(f"Config section {name!r} must be a mapping, got {type(section).__name__}")
+    _reject_unknown_keys(name, section, allowed)
+    return section
+
+
+def _reject_unknown_keys(where: str, mapping: dict, allowed: set[str]) -> None:
+    unknown = set(mapping) - allowed
+    if unknown:
+        raise ValueError(f"Unknown key(s) in {where}: {sorted(unknown)}; allowed: {sorted(allowed)}")

@@ -91,6 +91,7 @@ def optimization_block(cfg) -> dict:
             "hidden": cfg.hidden_weight,
             "attn": cfg.attn_weight,
         },
+        "logit_temperature": cfg.logit_temperature,
     }
 
 

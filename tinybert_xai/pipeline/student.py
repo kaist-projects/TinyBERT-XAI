@@ -224,6 +224,7 @@ def fine_tune_student(
             global_step=global_step,
             precision=cfg.precision,
             weights=weights,
+            logit_temperature=cfg.logit_temperature,
         )
         global_step = epoch_stats.global_step
 
@@ -280,6 +281,7 @@ def train_student_epoch(
     global_step: int,
     precision: str,
     weights: LossWeights = LossWeights(),
+    logit_temperature: float = 1.0,
 ) -> StudentEpochStats:
     model.train()
     if projections is not None:
@@ -300,6 +302,7 @@ def train_student_epoch(
             device=device,
             precision=precision,
             weights=weights,
+            logit_temperature=logit_temperature,
         ),
         parameters=trainable_params,
         device=device,
@@ -423,6 +426,7 @@ def _student_batch_losses(
     device: str,
     precision: str,
     weights: LossWeights = LossWeights(),
+    logit_temperature: float = 1.0,
 ) -> tuple[torch.Tensor, dict[str, float]]:
     teacher_out = None
     if cond.uses_teacher:
@@ -441,6 +445,7 @@ def _student_batch_losses(
         projections=projections,
         attention_mask=batch["attention_mask"],
         weights=weights,
+        logit_temperature=logit_temperature,
     )
 
 

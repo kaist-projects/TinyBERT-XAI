@@ -290,3 +290,14 @@ def test_loss_weights_from_config_maps_fields():
     weights = LossWeights.from_config(cfg)
 
     assert (weights.ce, weights.logit, weights.hidden, weights.attention) == (2.0, 3.0, 4.0, 5.0)
+
+
+def test_compute_student_losses_logit_temperature_changes_logit_term():
+    student_out, teacher_out = _logit_student_teacher()
+
+    _, base = compute_student_losses(student_out, teacher_out, condition_from_flags(True, False, False))
+    _, hot = compute_student_losses(
+        student_out, teacher_out, condition_from_flags(True, False, False), logit_temperature=2.0
+    )
+
+    assert hot["logit"] != pytest.approx(base["logit"])

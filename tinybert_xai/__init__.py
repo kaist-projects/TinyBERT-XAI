@@ -6,6 +6,7 @@ from tinybert_xai.storage.checkpoints import (
     teacher_dir,
 )
 from tinybert_xai.config import Config
+from tinybert_xai.runspec import RunSpec, load_run_spec, run_spec_from_mapping
 from tinybert_xai.distill.conditions import (
     ConditionSpec,
     all_conditions,
@@ -94,6 +95,9 @@ from tinybert_xai.utils import (
 __all__ = [
     # config
     "Config",
+    "RunSpec",
+    "load_run_spec",
+    "run_spec_from_mapping",
     # datasets
     "DatasetSpec",
     "LocalCsvSource",

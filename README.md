@@ -61,6 +61,18 @@ and logging in before use.
 
 Run commands from the repository root.
 
+**Run configuration.** Every training/eval script (and the sweep) accepts
+`--config <file.yaml>`, a single file that describes the whole run: dataset,
+condition, eval, and all hyperparameters. `configs/default.yaml` records the
+design-doc-locked recipe; `configs/kd_full.yaml` is a worked example. Precedence
+is `defaults < YAML < explicit CLI flag`, so any flag below still overrides the
+file, and omitting `--config` reproduces the historical defaults exactly:
+
+```bash
+python scripts/02_train_student.py --config configs/kd_full.yaml          # file drives the run
+python scripts/02_train_student.py --config configs/kd_full.yaml --no-eval # CLI overrides the file
+```
+
 ### 3.1. Environment Setup
 
 ```bash

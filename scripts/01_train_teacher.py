@@ -30,11 +30,11 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-from _dataset_cli import add_dataset_flag, dataset_from_args  # noqa: E402
+from _config_cli import add_config_flag, add_dataset_override, add_eval_override, resolve_run_spec  # noqa: E402
 
 from tinybert_xai import (  # noqa: E402
-    Config,
     configure_reproducibility,
+    dataset_by_name,
     evaluate_saved_teacher,
     fine_tune_teacher,
     format_teacher_eval_summary,
@@ -49,8 +49,9 @@ from tinybert_xai import (  # noqa: E402
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fine-tune the teacher (bert-base-uncased) on one dataset.")
-    add_dataset_flag(parser)
-    parser.add_argument("--eval", action="store_true", help="evaluate on dev/test after training completes")
+    add_config_flag(parser)
+    add_dataset_override(parser)
+    add_eval_override(parser)
     return parser.parse_args()
 
 
@@ -84,9 +85,9 @@ def evaluate_teacher(cfg, spec, device):
 
 
 def main() -> None:
-    cfg = Config()
-    args = parse_args()
-    spec = dataset_from_args(args)
+    run = resolve_run_spec(parse_args())
+    cfg = run.config
+    spec = dataset_by_name(run.dataset)
 
     configure_reproducibility(cfg.seed)
     device = resolve_device(cfg)
@@ -94,7 +95,7 @@ def main() -> None:
 
     train_teacher(cfg, spec, device)
 
-    if args.eval:
+    if run.eval:
         evaluate_teacher(cfg, spec, device)
 
 

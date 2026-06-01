@@ -23,3 +23,5 @@ class Config:
     logit_weight: float = 1.0
     hidden_weight: float = 1.0
     attn_weight: float = 1.0
+    # Logit KD softmax temperature (T² scaling applied inside logit_kd_loss).
+    logit_temperature: float = 1.0
