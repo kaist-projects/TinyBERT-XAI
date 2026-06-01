@@ -20,6 +20,7 @@ the ablation can be analyzed reproducibly.
     - [3.1. Environment Setup](#31-environment-setup)
     - [3.2. Teacher Fine-Tuning](#32-teacher-fine-tuning)
     - [3.3. Student Distillation](#33-student-distillation)
+        - [3.3.1. Recommended KD loss weights by dataset](#331-recommended-kd-loss-weights-by-dataset)
     - [3.4. Full Factorial Sweep](#34-full-factorial-sweep)
     - [3.5. Analysis](#35-analysis)
     - [3.6. Cross-Dataset Analysis](#36-cross-dataset-analysis)
@@ -99,6 +100,58 @@ Expected artifacts:
 
 - `results/checkpoints/<dataset>/student/<condition>/best.pt`
 - `results/metadata/<dataset>/student/<condition>/run_metadata.json`
+
+#### 3.3.1. Recommended KD loss weights by dataset
+
+By default every loss term has weight `1.0`. The catch is that the three KD
+signals live on very different scales: in our runs the attention loss is tiny
+(around `0.003`) while the CE, logit, and hidden losses are roughly `0.2`–`0.5`.
+With equal weights the larger terms dominate and the attention signal barely
+influences training.
+
+**The rule (plain English).** Make each signal count about the same as the
+plain training loss (CE). For each term we take how big the CE loss usually is
+and divide by how big that term usually is, using the `kd_full` runs as the
+reference. CE stays at `1.0`; a term that is, say, 100x smaller than CE gets a
+weight near `100`. This only rebalances how loud each signal is — it does not
+change which signals are turned on.
+
+Starting-point weights derived this way, per dataset:
+
+| Dataset | `ce` | `logit` | `hidden` | `attn` |
+|---|:---:|:---:|:---:|:---:|
+| `tweet_eval-sentiment` | 1.0 | 3.0 | 2.2 | 125 |
+| `imdb` | 1.0 | 1.8 | 0.9 | 240 |
+| `anli` | 1.0 | 1.3 | 2.1 | 400 |
+| `davidson` | 1.0 | 4.0 | 0.8 | 53 |
+| `dynahate` | 1.0 | 2.3 | 1.5 | 110 |
+| `hateval` | 1.0 | 2.4 | 1.1 | 100 |
+| `fever` | 1.0 | 1.8 | 1.5 | 300 |
+| `vardial` | 1.0 | 1.6 | 2.3 | 140 |
+
+Set them in the run's YAML, for example for `dynahate`:
+
+```yaml
+distillation:
+  loss_weights:
+    ce: 1.0
+    logit: 2.3
+    hidden: 1.5
+    attn: 110
+```
+
+**Caveats — read before using these.**
+
+- These are a **heuristic starting point**, not tuned optimums. They balance how
+  much each loss contributes; they do **not** guarantee better accuracy.
+- They come from **single-seed** runs, so each magnitude is one noisy sample.
+  The numbers are rounded and approximate; treat them as a first guess.
+- The attention weights (roughly 100–400) are large, because the attention loss
+  is so small. Confirm they actually help with a quick sweep on the **dev** set
+  before trusting them, and never tune on the test set.
+- The main 81-run factorial study deliberately keeps **all weights at `1.0`**
+  (see §6). These dataset-specific weights are for separate, exploratory runs,
+  not for the locked experiment.
 
 ### 3.4. Full Factorial Sweep
 
