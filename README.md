@@ -14,35 +14,35 @@ the ablation can be analyzed reproducibly.
 
 ## Table of Contents
 
-1. [Datasets](#1-datasets)
-2. [Features](#2-features)
-3. [Getting Started](#3-getting-started)
+- [1. Datasets](#1-datasets)
+- [2. Features](#2-features)
+- [3. Getting Started](#3-getting-started)
     - [3.1. Environment Setup](#31-environment-setup)
     - [3.2. Teacher Fine-Tuning](#32-teacher-fine-tuning)
     - [3.3. Student Distillation](#33-student-distillation)
     - [3.4. Full Factorial Sweep](#34-full-factorial-sweep)
     - [3.5. Analysis](#35-analysis)
     - [3.6. Cross-Dataset Analysis](#36-cross-dataset-analysis)
-4. [Project Structure](#4-project-structure)
-5. [Experimental Conditions](#5-experimental-conditions)
-6. [Notes / Limitations](#6-notes--limitations)
-7. [Acknowledgements](#7-acknowledgements)
+- [4. Project Structure](#4-project-structure)
+- [5. Experimental Conditions](#5-experimental-conditions)
+- [6. Notes / Limitations](#6-notes--limitations)
+- [7. Acknowledgements](#7-acknowledgements)
 
 ## 1. Datasets
 
 Datasets are selected with `--dataset <key>` and share the same teacher/student
 pipeline.
 
-| Dataset | `--dataset` | Task | Notes |
-|---|---|---|---|
-| [TweetEval-sentiment](https://huggingface.co/datasets/cardiffnlp/tweet_eval) | `tweet_eval-sentiment` | sentiment | official splits |
-| [IMDB](https://huggingface.co/datasets/stanfordnlp/imdb) | `imdb` | sentiment | seed-42 dev split |
-| [ANLI](https://huggingface.co/datasets/facebook/anli) | `anli` | NLI | sentence-pair input |
-| [Davidson](https://huggingface.co/datasets/tdavidson/hate_speech_offensive) | `davidson` | hate speech | seed-42 80/10/10 split |
-| [DynaHate](https://github.com/bvidgen/Dynamically-Generated-Hate-Speech-Dataset) | `dynahate` | hate speech | local CSV |
-| [HatEval](https://huggingface.co/datasets/valeriobasile/HatEval) | `hateval` | hate speech | HF-gated |
-| [FEVER](https://huggingface.co/datasets/pietrolesci/nli_fever) | `fever` | NLI | 50K train cap |
-| [VarDial](https://huggingface.co/datasets/statworx/swiss-dialects) | `vardial` | dialect ID | seed-42 80/10/10 split |
+| Dataset | `--dataset` | Task | Train / Dev / Test | Notes |
+|---|---|---|---|---|
+| [TweetEval-sentiment](https://huggingface.co/datasets/cardiffnlp/tweet_eval) | `tweet_eval-sentiment` | sentiment | 45,615 / 2,000 / 12,284 | official splits |
+| [IMDB](https://huggingface.co/datasets/stanfordnlp/imdb) | `imdb` | sentiment | 22,500 / 2,500 / 25,000 | seed-42 dev split |
+| [ANLI](https://huggingface.co/datasets/facebook/anli) | `anli` | NLI | 162,865 / 3,200 / 3,200 | sentence-pair input |
+| [Davidson](https://huggingface.co/datasets/tdavidson/hate_speech_offensive) | `davidson` | hate speech | 19,825 / 2,479 / 2,479 | seed-42 80/10/10 split |
+| [DynaHate](https://github.com/bvidgen/Dynamically-Generated-Hate-Speech-Dataset) | `dynahate` | hate speech | 32,924 / 4,100 / 4,120 | local CSV |
+| [HatEval](https://huggingface.co/datasets/valeriobasile/HatEval) | `hateval` | hate speech | 13,500 / 1,500 / 4,570 | HF-gated |
+| [FEVER](https://huggingface.co/datasets/pietrolesci/nli_fever) | `fever` | NLI | 45,000 / 19,998 / 5,000 | 50K train cap |
+| [VarDial](https://huggingface.co/datasets/statworx/swiss-dialects) | `vardial` | dialect ID | 3,793 / 475 / 475 | seed-42 80/10/10 split |
 
 Local datasets are gitignored: save DynaHate to
 `data/dynahate/dynahate_v0.2.3.csv`, and build Multi-VALUE with
