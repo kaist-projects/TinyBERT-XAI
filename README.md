@@ -1,8 +1,8 @@
-# TinyBERT-XAI
+# TinyBERT-Ablation
 ![cover](docs/images/02-readme-cover.png)  
 
-TinyBERT-XAI is a KAIST CS50700 Deep Learning final project that replicates and
-extends TinyBERT-style task distillation with granular control over knowledge
+TinyBERT-Ablation is a KAIST CS50700 Deep Learning final project that replicates and
+extends TinyBERT's task distillation with granular control over knowledge
 distillation (KD) loss components.
 
 - **Logit KD**: match teacher output distributions.
