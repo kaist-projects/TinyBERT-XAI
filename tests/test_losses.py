@@ -5,7 +5,14 @@ import pytest
 import torch
 
 from tinybert_xai import condition_from_flags
-from tinybert_xai.distill.losses import attention_kd_loss, compute_student_losses, hidden_kd_loss, logit_kd_loss
+from tinybert_xai.config import Config
+from tinybert_xai.distill.losses import (
+    LossWeights,
+    attention_kd_loss,
+    compute_student_losses,
+    hidden_kd_loss,
+    logit_kd_loss,
+)
 from tinybert_xai.modeling.projections import HiddenProjection
 
 
@@ -237,3 +244,49 @@ def test_compute_student_losses_supports_full_condition():
 
     assert losses.keys() == {"ce", "logit", "hidden", "attention"}
     assert total.item() == pytest.approx(sum(losses.values()))
+
+
+def _logit_student_teacher():
+    student_out = SimpleNamespace(loss=torch.tensor(0.5), logits=torch.tensor([[2.0, 0.0]]))
+    teacher_out = SimpleNamespace(logits=torch.tensor([[0.0, 2.0]]))
+    return student_out, teacher_out
+
+
+def test_compute_student_losses_default_weights_match_unweighted_sum():
+    student_out, teacher_out = _logit_student_teacher()
+
+    total, losses = compute_student_losses(student_out, teacher_out, condition_from_flags(True, False, False))
+
+    # Default LossWeights() (all 1.0) must reproduce the plain unweighted sum.
+    assert total.item() == pytest.approx(sum(losses.values()))
+
+
+def test_compute_student_losses_applies_custom_weights():
+    student_out, teacher_out = _logit_student_teacher()
+    weights = LossWeights(ce=2.0, logit=3.0)
+
+    total, losses = compute_student_losses(
+        student_out, teacher_out, condition_from_flags(True, False, False), weights=weights
+    )
+
+    assert total.item() == pytest.approx(2.0 * losses["ce"] + 3.0 * losses["logit"])
+
+
+def test_compute_student_losses_zero_weight_drops_term_but_keeps_raw_component():
+    student_out, teacher_out = _logit_student_teacher()
+    weights = LossWeights(ce=1.0, logit=0.0)
+
+    total, losses = compute_student_losses(
+        student_out, teacher_out, condition_from_flags(True, False, False), weights=weights
+    )
+
+    assert losses["logit"] > 0.0  # raw magnitude still reported
+    assert total.item() == pytest.approx(losses["ce"])  # but excluded from the total
+
+
+def test_loss_weights_from_config_maps_fields():
+    cfg = Config(ce_weight=2.0, logit_weight=3.0, hidden_weight=4.0, attn_weight=5.0)
+
+    weights = LossWeights.from_config(cfg)
+
+    assert (weights.ce, weights.logit, weights.hidden, weights.attention) == (2.0, 3.0, 4.0, 5.0)

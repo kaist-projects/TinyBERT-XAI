@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import torch
@@ -12,11 +13,36 @@ from tinybert_xai.modeling.projections import TEACHER_HIDDEN_LAYERS, HiddenProje
 if TYPE_CHECKING:
     from transformers.modeling_outputs import SequenceClassifierOutput
 
+    from tinybert_xai.config import Config
     from tinybert_xai.distill.conditions import ConditionSpec
 
 
 # Attention tuples have no embedding entry, unlike hidden-state tuples.
 TEACHER_ATTENTION_LAYERS = (2, 5, 8, 11)
+
+
+@dataclass(frozen=True)
+class LossWeights:
+    """Per-term coefficients for the student total loss.
+
+    Field names match the keys in the loss dict built by ``compute_student_losses``
+    (``ce``/``logit``/``hidden``/``attention``) so the total can be assembled with
+    ``getattr``. All default to 1.0, which reproduces the plain unweighted sum.
+    """
+
+    ce: float = 1.0
+    logit: float = 1.0
+    hidden: float = 1.0
+    attention: float = 1.0
+
+    @classmethod
+    def from_config(cls, cfg: "Config") -> "LossWeights":
+        return cls(
+            ce=cfg.ce_weight,
+            logit=cfg.logit_weight,
+            hidden=cfg.hidden_weight,
+            attention=cfg.attn_weight,
+        )
 
 
 def logit_kd_loss(
@@ -109,6 +135,7 @@ def compute_student_losses(
     *,
     projections: HiddenProjection | None = None,
     attention_mask: torch.Tensor | None = None,
+    weights: LossWeights = LossWeights(),
 ) -> tuple[torch.Tensor, dict[str, float]]:
     if cond.uses_teacher and teacher_out is None:
         raise RuntimeError(f"Condition {cond.name!r} requires teacher outputs")
@@ -133,7 +160,8 @@ def compute_student_losses(
             teacher_out.attentions,
             attention_mask,
         )
-    total = sum(losses.values())
+    # Weighted total; per-term magnitudes are reported raw (unscaled) for logging.
+    total = sum(getattr(weights, name) * value for name, value in losses.items())
     return total, {name: value.item() for name, value in losses.items()}
 
 

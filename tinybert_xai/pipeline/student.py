@@ -21,7 +21,7 @@ from tinybert_xai.eval import (
     compute_teacher_student_analysis,
     evaluate,
 )
-from tinybert_xai.distill.losses import compute_student_losses
+from tinybert_xai.distill.losses import LossWeights, compute_student_losses
 from tinybert_xai.modeling.models import load_classifier, load_tokenizer
 from tinybert_xai.modeling.projections import HiddenProjection
 from tinybert_xai.storage.runlog import (
@@ -207,6 +207,7 @@ def fine_tune_student(
 
     ckpt_dir = student_dir(spec.name, cond.name)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
+    weights = LossWeights.from_config(cfg)
     total_train_start = time.perf_counter()
 
     for epoch in range(cfg.num_epochs):
@@ -222,6 +223,7 @@ def fine_tune_student(
             epoch=epoch,
             global_step=global_step,
             precision=cfg.precision,
+            weights=weights,
         )
         global_step = epoch_stats.global_step
 
@@ -277,6 +279,7 @@ def train_student_epoch(
     epoch: int,
     global_step: int,
     precision: str,
+    weights: LossWeights = LossWeights(),
 ) -> StudentEpochStats:
     model.train()
     if projections is not None:
@@ -296,6 +299,7 @@ def train_student_epoch(
             teacher_model=teacher_model,
             device=device,
             precision=precision,
+            weights=weights,
         ),
         parameters=trainable_params,
         device=device,
@@ -418,6 +422,7 @@ def _student_batch_losses(
     teacher_model: "PreTrainedModel | None",
     device: str,
     precision: str,
+    weights: LossWeights = LossWeights(),
 ) -> tuple[torch.Tensor, dict[str, float]]:
     teacher_out = None
     if cond.uses_teacher:
@@ -435,6 +440,7 @@ def _student_batch_losses(
         cond,
         projections=projections,
         attention_mask=batch["attention_mask"],
+        weights=weights,
     )
 
 

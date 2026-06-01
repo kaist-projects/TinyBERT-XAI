@@ -17,3 +17,9 @@ class Config:
     eval_batch_size: int = 32
     num_epochs: int = 3
     patience: int = 2
+    # ── loss weights: L = ce·CE + logit·L_logit + hidden·L_hidden + attn·L_attn ──
+    # All 1.0 reproduces the unweighted sum (locked design-doc behavior).
+    ce_weight: float = 1.0
+    logit_weight: float = 1.0
+    hidden_weight: float = 1.0
+    attn_weight: float = 1.0

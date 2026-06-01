@@ -143,3 +143,4 @@ secrets/
 .envrc
 node_modules/
 .npm/
+.understand-anything/

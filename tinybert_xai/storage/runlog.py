@@ -85,6 +85,12 @@ def optimization_block(cfg) -> dict:
         "train_batch_size": cfg.train_batch_size,
         "eval_batch_size": cfg.eval_batch_size,
         "num_epochs": cfg.num_epochs,
+        "loss_weights": {
+            "ce": cfg.ce_weight,
+            "logit": cfg.logit_weight,
+            "hidden": cfg.hidden_weight,
+            "attn": cfg.attn_weight,
+        },
     }
 
 

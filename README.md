@@ -102,6 +102,16 @@ below. For example, `--logit --attention` is `kd_logit_attn`, `--logit --hidden
 --attention` is `kd_full`. KD conditions require the teacher checkpoint produced
 by the teacher fine-tuning step.
 
+The total loss is `L = α·CE + β·logit + γ·hidden + δ·attn`. Each coefficient is
+tunable via `--ce-weight`, `--logit-weight`, `--hidden-weight`, and
+`--attn-weight` (all default `1.0`, which reproduces the standard unweighted sum;
+`0` disables a term's contribution). Weights only scale terms already enabled by
+the condition flags above, so the default leaves every condition unchanged:
+
+```bash
+python scripts/02_train_student.py --logit --hidden --logit-weight 0.5 --hidden-weight 2.0
+```
+
 Expected artifacts:
 
 - `checkpoints/students/<dataset>/<condition>/best.pt`
