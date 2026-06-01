@@ -207,9 +207,7 @@ results/          Run metadata and analysis outputs
 
 Weights default to `1.0`, but the KD losses sit on very different scales
 (attention ≈ `0.003` vs CE/logit/hidden ≈ `0.2–0.5`), so attention barely affects
-training. To balance them, weight each term by `CE size ÷ term size` from the
-`kd_full` runs (CE stays `1.0`) and set them under `distillation.loss_weights` in
-the run YAML. Per-dataset starting points:
+training. To balance them, per-dataset starting points are:
 
 | Dataset | `ce` | `logit` | `hidden` | `attn` |
 |---|:---:|:---:|:---:|:---:|
@@ -222,9 +220,6 @@ the run YAML. Per-dataset starting points:
 | `fever` | 1.0 | 1.8 | 1.5 | 300 |
 | `vardial` | 1.0 | 1.6 | 2.3 | 140 |
 
-Heuristic, single-seed starting points: they balance each signal's contribution,
-not accuracy. Validate the large attention weights with a dev-set sweep (never
-the test set). The locked factorial keeps all weights at `1.0` (§7).
 
 ## 7. Notes / Limitations
 
