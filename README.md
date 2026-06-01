@@ -12,7 +12,23 @@ distillation (KD) loss components.
 Each run writes structured metadata, evaluation metrics, and loss magnitudes so
 the ablation can be analyzed reproducibly.
 
-## Datasets
+## Table of Contents
+
+1. [Datasets](#1-datasets)
+2. [Features](#2-features)
+3. [Getting Started](#3-getting-started)
+    - [3.1. Environment Setup](#31-environment-setup)
+    - [3.2. Teacher Fine-Tuning](#32-teacher-fine-tuning)
+    - [3.3. Student Distillation](#33-student-distillation)
+    - [3.4. Full Factorial Sweep](#34-full-factorial-sweep)
+    - [3.5. Analysis](#35-analysis)
+    - [3.6. Cross-Dataset Analysis](#36-cross-dataset-analysis)
+4. [Project Structure](#4-project-structure)
+5. [Experimental Conditions](#5-experimental-conditions)
+6. [Notes / Limitations](#6-notes--limitations)
+7. [Acknowledgements](#7-acknowledgements)
+
+## 1. Datasets
 
 Datasets are selected with `--dataset <key>` and share the same teacher/student
 pipeline.
@@ -33,7 +49,7 @@ Local datasets are gitignored: save DynaHate to
 `scripts/build_multivalue.py`. HatEval requires accepting the Hugging Face terms
 and logging in before use.
 
-## Features
+## 2. Features
 
 - End-to-end BERT teacher and TinyBERT student pipelines.
 - Granular CE, Logit, Hidden, and Attention KD loss control.
@@ -41,11 +57,11 @@ and logging in before use.
 - Evaluation for accuracy, calibration, and teacher-student agreement.
 - Reusable analysis, markdown reports, and PNG visualizations.
 
-## Getting Started
+## 3. Getting Started
 
 Run commands from the repository root.
 
-### Environment Setup
+### 3.1. Environment Setup
 
 ```bash
 conda create -n tinybert-xai python=3.12
@@ -54,7 +70,7 @@ pip install -r requirements.txt
 ```
 
 
-### Teacher Fine-Tuning
+### 3.2. Teacher Fine-Tuning
 
 Train the BERT teacher (`--dataset` selects a registered dataset; default
 `tweet_eval-sentiment`, also `imdb`, `anli`):
@@ -68,7 +84,7 @@ Expected artifacts:
 - `checkpoints/teachers/tweet_eval-sentiment/best.pt`
 - `results/teachers/tweet_eval-sentiment/run_metadata.json`
 
-### Student Distillation
+### 3.3. Student Distillation
 
 Train one student condition by toggling distillation signals with flags
 (`--logit`, `--hidden`, `--attention`); no flags means the `ce_only` baseline.
@@ -91,7 +107,7 @@ Expected artifacts:
 - `checkpoints/students/<dataset>/<condition>/best.pt`
 - `results/students/<dataset>/<condition>/run_metadata.json`
 
-### Full Factorial Sweep
+### 3.4. Full Factorial Sweep
 
 Run the teacher fine-tune (once) plus all 8 student conditions for one dataset
 with a single command. The sweep invokes the per-run scripts as subprocesses for
@@ -102,7 +118,7 @@ exist are skipped unless `--force`:
 python scripts/07_run_dataset.py --dataset imdb
 ```
 
-### Analysis
+### 3.5. Analysis
 
 Run the factorial analysis for a dataset (defaults to the pilot):
 
@@ -116,7 +132,7 @@ the analysis for another dataset never overwrites an existing report:
 - `results/analysis/<dataset>/REPORT.md`
 - `results/analysis/<dataset>/figures`
 
-### Cross-Dataset Analysis
+### 3.6. Cross-Dataset Analysis
 
 Once several datasets have completed sweeps, roll them up into the cross-task
 presentation assets. This runs in two stages, written under
@@ -149,7 +165,7 @@ python scripts/08b_representation_analysis.py   # N=256 test sample
 The written interpretation (RQ1/RQ2 answers) lives in
 `results/analysis/cross_dataset/CROSS_DATASET.md`.
 
-## Project Structure
+## 4. Project Structure
 
 ```text
 tinybert_xai/
@@ -183,7 +199,7 @@ reference/        Original TinyBERT reference code used for comparison only
 results/          Run metadata and analysis outputs
 ```
 
-## Experimental Conditions
+## 5. Experimental Conditions
 
 | Condition | Logit KD | Hidden KD | Attention KD |
 |---|:---:|:---:|:---:|
@@ -196,7 +212,7 @@ results/          Run metadata and analysis outputs
 | `kd_hidden_attn` |  | Y | Y |
 | `kd_full` | Y | Y | Y |
 
-## Notes / Limitations
+## 6. Notes / Limitations
 
 - The current pilot is single-seed. The observed `0.0198` student spread should
   not be treated as a statistically resolved per-signal effect.
@@ -208,7 +224,7 @@ results/          Run metadata and analysis outputs
   comparison. The active implementation is the modern HuggingFace/PyTorch code
   under `tinybert_xai/`.
 
-## Acknowledgements
+## 7. Acknowledgements
 
 This project builds on the TinyBERT distillation idea and uses HuggingFace
 Transformers/Datasets for the modern implementation. It was developed as a final
